@@ -1,9 +1,12 @@
 [project]
-name = "openenv-hackathon"
+name = "openenv-environment"
 version = "0.1.0"
-description = "Add your description here"
+description = "My Env environment for OpenEnv"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.135.2",
     "openenv-core>=0.2.2",
+    "pydantic>=2.12.5",
+    "uvicorn>=0.42.0",
 ]
