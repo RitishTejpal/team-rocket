@@ -5,7 +5,9 @@ description = "My Env environment for OpenEnv"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "beautifulsoup4>=4.14.3",
     "fastapi>=0.135.2",
+    "lxml>=6.0.2",
     "openenv-core>=0.2.2",
     "pydantic>=2.12.5",
     "uvicorn>=0.42.0",
