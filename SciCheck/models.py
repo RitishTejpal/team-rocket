@@ -65,7 +65,7 @@ class Divergence(BaseModel):
 class Verdict(BaseModel):
     """The agent's final verdict on the press release."""
 
-    overall: Literal["accurate", "overstated", "misleading_by_omission"]
+    overall: Literal["accurate", "overstated", "misleading_by_omission", "misinterpreted"]
     divergences: List[Divergence] = Field(default_factory=list)
 
 
@@ -117,7 +117,7 @@ class SciCheckState(BaseModel):
     press_release: str
     paper_sections: Dict[str, str]
     planted_distortions: List[PlantedDistortion]
-    verdict_ground_truth: Literal["accurate", "overstated", "misleading_by_omission"]
+    verdict_ground_truth: Literal["accurate", "overstated", "misleading_by_omission", "misinterpreted"]
     required_sections_for_full_score: List[str]
 
     fetched_so_far: List[str] = Field(default_factory=list)
