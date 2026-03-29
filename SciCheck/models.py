@@ -30,6 +30,7 @@ class DivergenceType(str, Enum):
     POPULATION_GENERALIZED = "population_generalized"
     CAUSAL_OVERCLAIM = "causal_overclaim"
     MISLEADING_OMISSION = "misleading_omission"
+    STAT_FABRICATION = "stat_fabrication"
 
 
 class TaskDifficulty(str, Enum):
