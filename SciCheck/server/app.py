@@ -7,15 +7,15 @@
 """
 FastAPI application for SciCheck.
 
-Routing only — zero game logic. All calls delegate to SciCheckEnvironment.
+Routing only - zero game logic. All calls delegate to SciCheckEnvironment.
 
 Endpoints:
-    POST /reset   — start a new episode
-    POST /step    — execute one agent action
-    GET  /state   — full hidden state (debug)
-    GET  /grader  — last grader breakdown
-    GET  /tasks   — scenario catalogue (no ground truth exposed)
-    GET  /health  — liveness check
+    POST /reset   - start a new episode
+    POST /step    - execute one agent action
+    GET  /state   - full hidden state (debug)
+    GET  /grader  - last grader breakdown
+    GET  /tasks   - scenario catalogue (no ground truth exposed)
+    GET  /health  - liveness check
 
 Session management:
     Pass X-Session-ID header to identify your session.
@@ -107,7 +107,7 @@ def reset(
     - Supply `difficulty` ("easy" | "medium" | "hard") to draw randomly from that tier.
     - Omit both to draw from the full pool.
 
-    Returns a `session_id` — include it as `X-Session-ID` in all subsequent calls.
+    Returns a `session_id` - include it as `X-Session-ID` in all subsequent calls.
     """
     sid = x_session_id or str(uuid.uuid4())
 
@@ -157,7 +157,7 @@ def step(
 def get_state(x_session_id: Optional[str] = Header(None)) -> dict:
     """
     Return the full internal episode state including planted distortions and ground truth.
-    Intended for debugging and grader inspection — never shown to the agent.
+    Intended for debugging and grader inspection - never shown to the agent.
     """
     env = _require_session(x_session_id)
     try:
