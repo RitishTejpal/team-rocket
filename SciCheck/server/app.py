@@ -5,71 +5,212 @@
 # LICENSE file in the root directory of this source tree.
 
 """
-FastAPI application for the My Env Environment.
+FastAPI application for SciCheck.
 
-This module creates an HTTP server that exposes the MyEnvironment
-over HTTP and WebSocket endpoints, compatible with EnvClient.
+Routing only — zero game logic. All calls delegate to SciCheckEnvironment.
 
 Endpoints:
-    - POST /reset: Reset the environment
-    - POST /step: Execute an action
-    - GET /state: Get current environment state
-    - GET /schema: Get action/observation schemas
-    - WS /ws: WebSocket endpoint for persistent sessions
+    POST /reset   — start a new episode
+    POST /step    — execute one agent action
+    GET  /state   — full hidden state (debug)
+    GET  /grader  — last grader breakdown
+    GET  /tasks   — scenario catalogue (no ground truth exposed)
+    GET  /health  — liveness check
+
+Session management:
+    Pass X-Session-ID header to identify your session.
+    If omitted on /reset, a new UUID is generated and returned.
+    All subsequent calls must include the returned session_id.
 
 Usage:
-    # Development (with auto-reload):
-    uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
-
-    # Production:
-    uvicorn server.app:app --host 0.0.0.0 --port 8000 --workers 4
-
-    # Or run directly:
-    python -m server.app
+    uvicorn SciCheck.server.app:app --reload --host 0.0.0.0 --port 8000
 """
 
-try:
-    from openenv.core.env_server.http_server import create_app
-except Exception as e:  # pragma: no cover
-    raise ImportError(
-        "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
-    ) from e
+import uuid
+from typing import Optional
+
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel
 
 try:
-    from ..models import MyAction, MyObservation
-    from .environment import MyEnvironment
-except ModuleNotFoundError:
-    from models import MyAction, MyObservation
-    from SciCheck.server.environment import MyEnvironment
+    from ..models import SciCheckAction, SciCheckObservation, SciCheckState
+    from .environment import SciCheckEnvironment
+except ImportError:
+    from models import SciCheckAction, SciCheckObservation, SciCheckState  # type: ignore[no-redef]
+    from SciCheck.server.environment import SciCheckEnvironment  # type: ignore[no-redef]
 
+# ---------------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------------
 
-# Create the app with web interface and README integration
-app = create_app(
-    MyEnvironment,
-    MyAction,
-    MyObservation,
-    env_name="my_env",
-    max_concurrent_envs=1,  # increase this number to allow more concurrent WebSocket sessions
+app = FastAPI(
+    title="SciCheck",
+    description=(
+        "A multi-step investigation environment where an AI agent must "
+        "fact-check a science press release against the underlying research."
+    ),
+    version="1.0.0",
 )
 
+# ---------------------------------------------------------------------------
+# Session pool  { session_id -> SciCheckEnvironment }
+# ---------------------------------------------------------------------------
 
-def main(host: str = "0.0.0.0", port: int = 8000):
+_sessions: dict[str, SciCheckEnvironment] = {}
+
+
+def _require_session(session_id: Optional[str]) -> SciCheckEnvironment:
+    if not session_id or session_id not in _sessions:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found. POST /reset first (with X-Session-ID header).",
+        )
+    return _sessions[session_id]
+
+
+# ---------------------------------------------------------------------------
+# Request / Response schemas
+# ---------------------------------------------------------------------------
+
+
+class ResetRequest(BaseModel):
+    task_id: Optional[str] = None
+    difficulty: Optional[str] = None
+
+
+class ResetResponse(BaseModel):
+    session_id: str
+    observation: SciCheckObservation
+
+
+class StepResponse(BaseModel):
+    session_id: str
+    observation: SciCheckObservation
+    reward: float
+    done: bool
+
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+
+@app.post("/reset", response_model=ResetResponse, tags=["episode"])
+def reset(
+    body: ResetRequest = ResetRequest(),
+    x_session_id: Optional[str] = Header(None),
+) -> ResetResponse:
     """
-    Entry point for direct execution via uv run or python -m.
+    Start a new episode.
 
-    This function enables running the server without Docker:
-        uv run --project . server
-        uv run --project . server --port 8001
-        python -m my_env.server.app
+    - Supply `task_id` to pin a specific scenario.
+    - Supply `difficulty` ("easy" | "medium" | "hard") to draw randomly from that tier.
+    - Omit both to draw from the full pool.
 
-    Args:
-        host: Host address to bind to (default: "0.0.0.0")
-        port: Port number to listen on (default: 8000)
-
-    For production deployments, consider using uvicorn directly with
-    multiple workers:
-        uvicorn my_env.server.app:app --workers 4
+    Returns a `session_id` — include it as `X-Session-ID` in all subsequent calls.
     """
+    sid = x_session_id or str(uuid.uuid4())
+
+    # Reuse existing env instance if session already exists, else create fresh
+    if sid not in _sessions:
+        try:
+            _sessions[sid] = SciCheckEnvironment()
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    env = _sessions[sid]
+    try:
+        obs = env.reset(task_id=body.task_id, difficulty=body.difficulty)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return ResetResponse(session_id=sid, observation=obs)
+
+
+@app.post("/step", response_model=StepResponse, tags=["episode"])
+def step(
+    action: SciCheckAction,
+    x_session_id: Optional[str] = Header(None),
+) -> StepResponse:
+    """
+    Execute one agent action.
+
+    Action types:
+    - `fetch_abstract` / `fetch_methods` / `fetch_results` / `fetch_limitations` / `fetch_stats`
+    - `submit_verdict`  (include a `verdict` payload)
+    """
+    env = _require_session(x_session_id)
+    try:
+        obs, reward, done = env.step(action)
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return StepResponse(
+        session_id=x_session_id,
+        observation=obs,
+        reward=reward,
+        done=done,
+    )
+
+
+@app.get("/state", tags=["debug"])
+def get_state(x_session_id: Optional[str] = Header(None)) -> dict:
+    """
+    Return the full internal episode state including planted distortions and ground truth.
+    Intended for debugging and grader inspection — never shown to the agent.
+    """
+    env = _require_session(x_session_id)
+    try:
+        return env.state.model_dump()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/grader", tags=["debug"])
+def get_grader(x_session_id: Optional[str] = Header(None)) -> dict:
+    """
+    Return the grader breakdown from the most recently completed episode.
+    Only available after `submit_verdict` has been called.
+    """
+    env = _require_session(x_session_id)
+    try:
+        state = env.state
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if state.grader_result is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No grader result yet. Call /step with submit_verdict first.",
+        )
+    return state.grader_result
+
+
+@app.get("/tasks", tags=["meta"])
+def get_tasks() -> list[dict]:
+    """
+    List all available scenarios with metadata.
+    Ground-truth distortions and paper sections are NOT included.
+    """
+    try:
+        env = SciCheckEnvironment()
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return env.scenarios_metadata()
+
+
+@app.get("/health", tags=["meta"])
+def health() -> dict:
+    """Liveness check."""
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Entrypoint
+# ---------------------------------------------------------------------------
+
+
+def main(host: str = "0.0.0.0", port: int = 8000) -> None:
     import uvicorn
 
     uvicorn.run(app, host=host, port=port)
