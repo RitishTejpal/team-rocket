@@ -26,6 +26,7 @@ Usage:
     uvicorn SciCheck.server.app:app --reload --host 0.0.0.0 --port 8000
 """
 
+from contextlib import asynccontextmanager
 import uuid
 from typing import Optional
 
@@ -43,6 +44,16 @@ except ImportError:
 # App
 # ---------------------------------------------------------------------------
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Pre-load all scenarios into memory once at startup."""
+    try:
+        SciCheckEnvironment.preload_scenarios()
+    except Exception:
+        pass  # We will let the endpoints throw the 503 if the file is missing later
+    yield
+    # Any cleanup could go here
+
 app = FastAPI(
     title="SciCheck",
     description=(
@@ -50,6 +61,7 @@ app = FastAPI(
         "fact-check a science press release against the underlying research."
     ),
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # ---------------------------------------------------------------------------
@@ -193,10 +205,9 @@ def get_tasks() -> list[dict]:
     Ground-truth distortions and paper sections are NOT included.
     """
     try:
-        env = SciCheckEnvironment()
+        return SciCheckEnvironment.scenarios_metadata()
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return env.scenarios_metadata()
 
 
 @app.get("/health", tags=["meta"])
