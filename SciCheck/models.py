@@ -122,7 +122,7 @@ class SciCheckState(BaseModel):
 
     fetched_so_far: List[str] = Field(default_factory=list)
     step_count: int = 0
-    max_steps: int = 6
+    max_steps: int
     done: bool = False
     trajectory_score: float = 0.0
     verdict_submitted: Optional[Verdict] = None
