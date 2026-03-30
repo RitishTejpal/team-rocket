@@ -4,13 +4,15 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-"""My Env Environment."""
+"""SciCheck — science misinformation investigation environment."""
 
-from .client import MyEnv
-from .models import MyAction, MyObservation
+from .models import DivergenceType, SciCheckAction, SciCheckObservation, SciCheckState
+from .server.environment import SciCheckEnvironment
 
 __all__ = [
-    "MyAction",
-    "MyObservation",
-    "MyEnv",
+    "DivergenceType",
+    "SciCheckAction",
+    "SciCheckObservation",
+    "SciCheckState",
+    "SciCheckEnvironment",
 ]
