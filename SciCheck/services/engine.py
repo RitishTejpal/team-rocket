@@ -70,10 +70,12 @@ def run_distortion_engine(sections: dict, press_release: str, difficulty: str) -
         result = apply_stat_fabrication(stats_text)
         if result is not None:
             fabricated_number, record = result
-            record["found_in_section"] = "stats"
-            record["severity"] = config["severity"]
-            planted.append(record)
-            working_text = working_text + f" The study reported a {fabricated_number} improvement."
+            real_number = record["original_text"]
+            if real_number in working_text:
+                working_text = working_text.replace(real_number, f"{fabricated_number}%", 1)
+                record["found_in_section"] = "stats"
+                record["severity"] = config["severity"]
+                planted.append(record)
 
     # Step 3: regular distortions on working_text 
     regular = [d for d in config["allowed"] if d != "stat_fabrication"]

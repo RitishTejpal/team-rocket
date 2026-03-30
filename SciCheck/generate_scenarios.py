@@ -12,7 +12,7 @@ from SciCheck.services.groq_pr import build_press_release
 from pathlib import Path
 
 SCENARIOS_PATH = Path(__file__).parent / "data" / "scenarios.json"
-PAPERS_PER_DOMAIN_PER_DIFFICULTY = 1
+PAPERS_PER_DOMAIN_PER_DIFFICULTY = 4
 VERDICT_MAP = {
     "easy":   "overstated",
     "medium": "misinterpreted",

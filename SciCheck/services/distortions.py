@@ -120,8 +120,6 @@ def apply_hedging_stripped(text: str) -> str:
                 "type": "hedging_stripped",
                 "original_text": combined,
                 "distorted_to": "",
-                "found_in_section": None,
-                "severity": "hard"
             }
             return distorted_text, record
     return None

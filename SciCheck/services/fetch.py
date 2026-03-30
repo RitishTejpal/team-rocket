@@ -65,14 +65,29 @@ def fetch_pmcids_for_domain(domain_key: str, count=20) -> list[str]:
         "retmode": "json",
         "sort": "relevance",
     }
-    time.sleep(0.4)    # NCBI rate limit without API key - 3 requests per second
-    r = requests.get(ESEARCH_URL, params=params)
-    r.raise_for_status()
 
-    data = r.json()
-    pmcids = data["esearchresult"]["idlist"]
-    print(f"[{domain_key}] fetched {len(pmcids)} PMCIDs")
-    return pmcids
+    for attempt in range(3):
+        try:
+            time.sleep(1.0 + attempt)
+            r = requests.get(ESEARCH_URL, params=params, timeout=30)
+            r.raise_for_status()
+
+            data = r.json()
+            if "esearchresult" not in data or "idlist" not in data["esearchresult"]:
+                print(f"[{domain_key}] unexpected response: {data}")
+                time.sleep(5 * (attempt + 1))
+                continue
+
+            pmcids = data["esearchresult"]["idlist"]
+            print(f"[{domain_key}] fetched {len(pmcids)} PMCIDs")
+            return pmcids
+
+        except RequestException as e:
+            print(f"[{domain_key}] attempt {attempt+1} failed: {e}")
+            time.sleep(5 * (attempt + 1))
+
+    print(f"[{domain_key}] giving up after 3 attempts - returning empty list")
+    return []
     
 def fetch_full_text(pmcid: str) -> str:
     """
@@ -155,12 +170,10 @@ def is_usable_paper(sections: dict) -> tuple[bool, str]:
     """
     if not sections.get("abstract"):
         return False, "no abstract"
-    
-    if not sections.get("results"):
-        return False, "no results section"
-    
-    results = sections["results"].lower()
-    future_signals = [
+
+    protocol_signals = [
+        "currently conducting",
+        "aims to assess",
         "will be carried out",
         "will be collected",
         "will be analyzed",
@@ -169,7 +182,15 @@ def is_usable_paper(sections: dict) -> tuple[bool, str]:
         "is ongoing",
         "are ongoing",
     ]
-    for signal in future_signals:
+    abstract = (sections.get("abstract") or "").lower()
+    if any(sig in abstract for sig in protocol_signals):
+        return False, "protocol paper (future tense abstract)"
+
+    if not sections.get("results"):
+        return False, "no results section"
+    
+    results = sections["results"].lower()
+    for signal in protocol_signals:
         if signal in results:
             return False, f"protocol paper detected: '{signal}'"
     

@@ -16,22 +16,25 @@ def build_press_release(sections: dict) -> str | None:
     methods = (sections.get("methods") or "")[:600]
     results = (sections.get("results") or "")[:1200]
     limitations = (sections.get("limitations") or "")[:600]
+    conclusion = (sections.get("conclusion") or "")[:800]
 
     prompt = f"""You are a university press office writer.
 Write a single press release of STRICTLY 200-250 words, based on the research below.
 Rules:
-- Write in third person, past tense throughout. The research has been completed.
+- Write about COMPLETED research only. Use third person, past tense. The study has already been conducted and findings are known
 - It should follow the format: introduction, methods, results, conclusion.
 - Do not exaggerate, editorialize, or add claims. Stay factual.
 - Do NOT use a headline, date, boilerplate or bullet points. Simply one paragraph.
 - Mention the study population specifically (who was studied, how many, where).
 - Mention the key finding with its actual magnitude if reported.
 - Mention at least one limitation or caveat from the paper.
+- Do NOT end with a result.
 
 Abstract: {abstract}
 Methods: {methods}
 Results: {results}
 Limitations: {limitations}
+Conclusions: {conclusion}
 
 Write only the press release text. Nothing else.
 """
