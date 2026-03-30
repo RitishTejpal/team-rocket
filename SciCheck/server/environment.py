@@ -49,9 +49,9 @@ except ImportError:
 SECTIONS = ["abstract", "methods", "results", "limitations", "stats"]
 
 MAX_STEPS: dict[TaskDifficulty, int] = {
-    TaskDifficulty.EASY: 6,
-    TaskDifficulty.MEDIUM: 10,
-    TaskDifficulty.HARD: 15,
+    TaskDifficulty.EASY: 3,
+    TaskDifficulty.MEDIUM: 7,
+    TaskDifficulty.HARD: 10,
 }
 
 # Maps ActionType enum value → section name in paper_sections
@@ -75,10 +75,21 @@ class SciCheckEnvironment:
     """One instance = one episode. Stateful; must call reset() before step()."""
 
     SUPPORTS_CONCURRENT_SESSIONS: bool = True
+    _global_scenarios: Optional[list[dict]] = None
+
+    @classmethod
+    def preload_scenarios(cls) -> None:
+        """Preload scenarios into class memory, usually triggered by FastAPI lifespan."""
+        if cls._global_scenarios is None:
+            cls._global_scenarios = cls._load_scenarios()
 
     def __init__(self) -> None:
+        if self._global_scenarios is None:
+            self.preload_scenarios()
         self._state: Optional[SciCheckState] = None
-        self._scenarios: list[dict] = self._load_scenarios()
+        # Use a copy or refer directly since we don't mutate the scenarios list itself
+        assert self._global_scenarios is not None
+        self._scenarios: list[dict] = self._global_scenarios
 
     # ------------------------------------------------------------------
     # Public API
@@ -175,8 +186,13 @@ class SciCheckEnvironment:
             raise RuntimeError("No active episode. Call reset() first.")
         return self._state
 
-    def scenarios_metadata(self) -> list[dict]:
+    @classmethod
+    def scenarios_metadata(cls) -> list[dict]:
         """Returns scenario metadata without ground-truth distortion details."""
+        if cls._global_scenarios is None:
+            cls.preload_scenarios()
+        assert cls._global_scenarios is not None
+        
         return [
             {
                 "id": s["id"],
@@ -185,7 +201,7 @@ class SciCheckEnvironment:
                 "num_distortions": len(s.get("planted_distortions", [])),
                 "required_sections": s.get("required_sections_for_full_score", []),
             }
-            for s in self._scenarios
+            for s in cls._global_scenarios
         ]
 
     # ------------------------------------------------------------------
@@ -200,23 +216,34 @@ class SciCheckEnvironment:
         if "limitations" not in state.fetched_so_far:
             state.trajectory_score -= 0.2
 
-        verdict_score = self._run_grader(verdict)
+        raw_verdict_score, max_verdict_score = self._run_grader(verdict)
         state.verdict_submitted = verdict
 
-        raw = state.trajectory_score * 0.3 + verdict_score * 0.7
-        final_score = max(0.0, min(1.0, raw))
+        # Max possible trajectory (0.1 per unique relevant section)
+        relevant_sections = {p.found_in_section for p in state.planted_distortions}
+        max_trajectory = len(relevant_sections) * 0.1
+
+        # Max theoretical raw score
+        max_raw = (max_trajectory * 0.3) + (max_verdict_score * 0.7)
+        
+        # Achieved raw score
+        achieved_raw = (state.trajectory_score * 0.3) + (raw_verdict_score * 0.7)
+
+        # Normalize to 0.0 - 1.0
+        final_score = max(0.0, min(1.0, achieved_raw / max_raw if max_raw > 0 else 0.0))
 
         # Persist final numbers in grader result
         assert state.grader_result is not None
         state.grader_result["trajectory_score"] = round(state.trajectory_score, 4)
-        state.grader_result["verdict_score"] = round(verdict_score, 4)
+        state.grader_result["verdict_score"] = round(raw_verdict_score, 4)
         state.grader_result["final_score"] = round(final_score, 4)
 
         return final_score
 
-    def _run_grader(self, verdict: Verdict) -> float:
+    def _run_grader(self, verdict: Verdict) -> Tuple[float, float]:
         """
         Deterministic verdict evaluation.
+        Returns: (achieved_score, max_possible_score)
 
         EASY / MEDIUM
           +0.3  overall verdict matches ground truth
@@ -235,10 +262,12 @@ class SciCheckEnvironment:
         submitted_types = {d.type for d in verdict.divergences}
         fetched = set(state.fetched_so_far)
         score = 0.0
+        max_possible = 0.0
         checks: list[dict] = []
 
         def record(check: str, passed: bool, points: float) -> None:
-            nonlocal score
+            nonlocal score, max_possible
+            max_possible += points
             score += points if passed else 0.0
             checks.append({"check": check, "passed": passed, "points": points if passed else 0.0})
 
@@ -270,10 +299,12 @@ class SciCheckEnvironment:
         state.grader_result = {
             "task_id": state.task_id,
             "difficulty": state.difficulty.value,
+            "raw_verdict_score": score,
+            "max_possible_verdict": max_possible,
             "checks": checks,
             # trajectory / verdict / final filled in by _finalize()
         }
-        return score
+        return score, max_possible
 
     # ------------------------------------------------------------------
     # Helpers
