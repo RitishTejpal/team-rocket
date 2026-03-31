@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     groq_api_key: str
     groq_model_name: str = "llama-3.1-8b-instant" 
+    openai_model: str = "openai/gpt-oss-120b"
     
 @lru_cache
 def get_settings() -> Settings:

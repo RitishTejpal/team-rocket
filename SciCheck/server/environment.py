@@ -197,7 +197,7 @@ class SciCheckEnvironment:
             {
                 "id": s["id"],
                 "difficulty": s["difficulty"],
-                "topic": s.get("topic", ""),
+                "topic": s.get("domain", ""),
                 "num_distortions": len(s.get("planted_distortions", [])),
                 "required_sections": s.get("required_sections_for_full_score", []),
             }

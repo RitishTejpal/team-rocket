@@ -50,10 +50,10 @@ This step is especially important to ensure the reliability on the grader. It va
 
 ### Final Data Distribution
 
-Total scenarios: 69
-Easy:   38  (target: 20) - OVER by 18
-Medium: 22  (target: 20) - slightly over
-Hard:    9  (target: 20) - SEVERELY UNDER by 11
+**Total scenarios: 63**  
+- Easy:   21  (target: 20)  
+- Medium: 20  (target: 20)  
+- Hard:   22  (target: 20)   
 
 ---
 
