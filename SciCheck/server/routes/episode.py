@@ -11,7 +11,7 @@ router = APIRouter(tags=["episode"])
 
 @router.post("/reset", response_model=ResetResponse)
 def reset(
-    body: ResetRequest = ResetRequest(),
+    body: ResetRequest,
     x_session_id: Optional[str] = Header(None),
 ) -> ResetResponse:
     """

@@ -325,7 +325,7 @@ class SciCheckEnvironment:
             fetched_sections={
                 s: state.paper_sections[s]
                 for s in state.fetched_so_far
-                if s in state.paper_sections
+                if s in state.paper_sections and state.paper_sections[s] is not None
             },
             step_count=state.step_count,
             done=state.done,

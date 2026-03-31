@@ -115,7 +115,7 @@ class SciCheckState(BaseModel):
     task_id: str
     difficulty: TaskDifficulty
     press_release: str
-    paper_sections: Dict[str, str]
+    paper_sections: Dict[str, Optional[str]]
     planted_distortions: List[PlantedDistortion]
     verdict_ground_truth: Literal["accurate", "overstated", "misleading_by_omission", "misinterpreted"]
     required_sections_for_full_score: List[str]
