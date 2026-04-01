@@ -1,5 +1,5 @@
 from openai import OpenAI
-import requests, json
+import requests, json, re
 import random, argparse
 from SciCheck.core.config import get_settings
 
@@ -14,9 +14,9 @@ def get_tasks(base_url: str) -> list[dict]:
     response.raise_for_status()
     return response.json()
 
-def reset_episode(task_id: str, difficulty: str, base_url: str) -> dict:
-    print(f"Resetting episode with task_id={task_id} difficulty={difficulty}")
-    response = requests.post(f"{base_url}/reset", json={"task_id": task_id, "difficulty": difficulty})
+def reset_episode(task_id: str, base_url: str) -> dict:
+    print(f"Resetting episode with task_id={task_id}")
+    response = requests.post(f"{base_url}/reset", json={"task_id": task_id})
 
     if response.status_code != 200:
         print(f"SERVER ERROR ({response.status_code}): {response.text}")
@@ -40,8 +40,12 @@ def step_episode(session_id: str, action_type: str, base_url: str, verdict: dict
 
 def get_grader_result(session_id: str, base_url: str) -> dict:
     response = requests.get(f"{base_url}/grader", headers={"X-Session-ID": session_id})
+    if response.status_code == 400:
+        return None
     response.raise_for_status()
     return response.json()
+
+# Prompts and Parsing
 
 SECTION_LIMITS = {
     "abstract":    4000,
@@ -51,7 +55,7 @@ SECTION_LIMITS = {
     "stats":       3000,
 }
 
-def build_prompt(press_release: str, fetched_sections: dict) -> str:
+def build_prompt(press_release: str, fetched_sections: dict, available_tools: list) -> str:
     sections_text = ""
     for section in ["abstract", "methods", "results", "limitations", "stats"]:
         if section in fetched_sections and fetched_sections[section]:
@@ -60,23 +64,50 @@ def build_prompt(press_release: str, fetched_sections: dict) -> str:
             if len(text) > limit:
                 text = text[:limit] + "\n... [truncated]"
             sections_text += f"\n[{section.upper()}]\n{text}\n"
-    return f"""
-You are a scientific fact-checker. Given a press release and sections from the underlying paper, you must identify where the press release distorts, exaggerates or misinterprets the research.
 
-Press Release: {press_release}
-Sections from the paper: {sections_text}
+    if not sections_text:
+        sections_text = "None yet."
 
-Output ONLY valid JSON with the following format:
+    return f"""You are a scientific fact-checker investigating a press release. The press release may or may not have some disparities with the underlying scientific paper. Given a press release and sections from the underlying paper, you must identify where the press release distorts, exaggerates or misinterprets the research.
+You have access to different sections of the paper that you can fetch one at a time, but fetching is costly. You must decide which section to fetch next, or if you have enough information to submit a final verdict on the press release's accuracy.
+You have the valid fetch tools available for you listed down below.
+
+PRESS RELEASE:
+{press_release}
+
+SECTIONS YOU HAVE READ SO FAR:
+{sections_text}
+
+AVAILABLE ACTIONS:
+{available_tools}
+
+Decide what to do next.
+- Read the press release. Fetch a section of your choice to begin the process of fact checking.
+- If you can already identify distortions from what you have read and feel like there is nothing suspicious about the text anymore, choose submit_verdict.
+- If you need more evidence, fetch the most relevant section as per you.
+- You have a limited step budget. Do NOT fetch sections unnecessarily.
+
+If your action is anything other than submit_verdict, output ONLY this JSON:
 {{
-    "overall": "accurate" | "overstated" | "misinterpreted" | "misleading_by_omission",
-    "divergences": [
-    {{
-        "type": "scope_inflation" | "certainty_inflation" | "magnitude_distortion" | "hedging_stripped" | "population_generalized" | "causal_overclaim" | "misleading_omission" | "stat_fabrication",
-        "pr_quote": "exact sentence from press release that is wrong",
-        "explanation": "why this is wrong based on the paper",
-        "severity": "low" | "medium" | "high"
+    "action": "fetch_abstract | fetch_methods | fetch_results | fetch_limitations | fetch_stats | submit_verdict",
+    "reasoning": "why you chose this"
+}}
+
+If your action is submit_verdict, output ONLY this JSON:
+{{
+    "action": "submit_verdict",
+    "reasoning": "why you have enough evidence to decide",
+    "verdict": {{
+        "overall": "accurate" | "overstated" | "misinterpreted" | "misleading_by_omission",
+        "divergences": [
+        {{
+            "type": "scope_inflation" | "certainty_inflation" | "magnitude_distortion" | "hedging_stripped" | "population_generalized" | "causal_overclaim" | "misleading_omission" | "stat_fabrication",
+            "pr_quote": "exact sentence from press release that is wrong",
+            "explanation": "why this is wrong based on the paper",
+            "severity": "low" | "medium" | "high"
+        }}
+        ]
     }}
-    ]
 }}
 """
 
@@ -88,80 +119,120 @@ def call_llm(prompt: str) -> dict:
     )
     return response.choices[0].message.content
 
-def parse_verdict(raw_text: str) -> dict | None:
+def parse_response(raw_text: str, available_tools: list) -> tuple[str, dict | None]:
     valid_overalls = {"accurate", "overstated", "misinterpreted", "misleading_by_omission"}
     valid_types = {"scope_inflation", "certainty_inflation", "magnitude_distortion", "hedging_stripped", "population_generalized", "causal_overclaim", "misleading_omission", "stat_fabrication"}
     valid_severities = {"low", "medium", "high"}
 
     try:
         text = raw_text.strip()
-        if text.startswith("```json"):
-            text = text.split("```")[1]
-            text = text.removeprefix("json").strip()
+        if text.startswith("```"):
+            text = text.split("```")[1].removeprefix("json").strip()
         data = json.loads(text)
 
-        if data["overall"] not in valid_overalls:
-            return None
+        action = data.get("action", "").strip()
+        if action not in available_tools:
+            return None, None
+
+        if action != "submit_verdict":
+            return action, None
         
-        for divergence in data["divergences"]:
-            if divergence["type"] not in valid_types or divergence["severity"] not in valid_severities:
-                return None
-            if not divergence.get("pr_quote") or not divergence.get("explanation"):
-                return None
-            
-        return data
+        # Validate the embedded verdict
+        v = data.get("verdict")
+        if not v or v.get("overall") not in valid_overalls:
+            return None, None
+
+        for d in v.get("divergences", []):
+            if d.get("type") not in valid_types:
+                return None, None
+            if d.get("severity") not in valid_severities:
+                return None, None
+            if not d.get("pr_quote") or not d.get("explanation"):
+                return None, None
+
+        return action, v
 
     except Exception:
-        return None
+        return None, None
 
 # Baseline Main
 
-FETCH_STRATEGY = {
-    "easy":   ["abstract"],
-    "medium": ["abstract", "methods", "stats"],
-    "hard":   ["abstract", "results", "limitations"],
-}
 FALLBACK_VERDICT = {
     "easy":   "overstated",
     "medium": "misinterpreted",
     "hard":   "misleading_by_omission",
 }
+MAX_STEPS = {
+    "easy": 3,
+    "medium": 7,
+    "hard": 10,
+}
 
 def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
     # 1. Reset
     # print(task_id, difficulty)
-    session_id, obs = reset_episode(task_id, difficulty, base_url)
+    session_id, obs = reset_episode(task_id, base_url)
     press_release = obs["press_release"]
     fetched_sections = {}
+    available_tools = obs["available_tools"]
+    final_reward = 0.0
+    max_steps = MAX_STEPS[difficulty]
+    verdict_submitted = False
 
-    # 2. Fetch sections
-    for section in FETCH_STRATEGY[difficulty]:
-        obs, reward, done = step_episode(session_id, f"fetch_{section}", base_url)
-        fetched_sections = obs["fetched_sections"]
-        print(f"  [{task_id}] Fetched {section} (reward={reward:.3f}); done={done})")
-        if done:
-            print("  Episode ended early - stopping fetch loop")
+    # 2. Agentic loop
+    for step in range(max_steps):
+        print(f"  [{task_id}] Step {step + 1}/{max_steps} | available: {available_tools}")
+        
+        # 2.1 Ask llm what to do next
+        raw = call_llm(build_prompt(press_release, fetched_sections, available_tools))
+        print(raw)
+        action, verdict = parse_response(raw, available_tools)
+
+        if action is None:
+            if fetched_sections:
+                action = "submit_verdict"
+                verdict = {"overall": FALLBACK_VERDICT[difficulty], "divergences": []}
+                print(f"  [{task_id}] Parse failed - falling back to submit with default verdict")
+            else:
+                action = "fetch_abstract"
+                print(f"  [{task_id}] Parse failed with no sections read - fetching abstract first")
+
+        # 2.2 if submit, ask for verdict
+        if action == "submit_verdict":
+            if verdict is None:
+                print(f"  [{task_id}] parse_verdict failed - using fallback")
+                verdict = {
+                    "overall": FALLBACK_VERDICT[difficulty], 
+                    "divergences": []
+                }
+
+            obs, final_reward, done = step_episode(session_id, "submit_verdict", base_url, verdict)
+            verdict_submitted = True
+            print(f"  [{task_id}] Submitted verdict -> reward={final_reward:.3f} | done={done}")
             break
 
-    # 3. Build prompt and call LLM
-    prompt = build_prompt(press_release, fetched_sections)
-    raw = call_llm(prompt)
-    print(raw)
+        # 2.3 Execute the fetch action  
+        obs, reward, done = step_episode(session_id, action, base_url)
+        fetched_sections = obs["fetched_sections"]
+        available_tools = obs["available_tools"]
+        print(f"  [{task_id}] {action} -> reward={reward:.3f} | done={done}")
 
-    # 4. Parse verdict and step
-    verdict = parse_verdict(raw)
-    if verdict is None:
-        print(f"  [{task_id}] parse_verdict failed - using fallback")
-        verdict = {"overall": FALLBACK_VERDICT[difficulty], "divergences": []}
-    obs, final_reward, done = step_episode(session_id, "submit_verdict", base_url, verdict)
-    print(f"  [{task_id}] Submitted verdict (reward={final_reward:.3f}); done={done}")
+        if done:    # Max steps exceeded
+            print(f"  [{task_id}] Episode force-closed by environment")
+            break
 
-    # 5. Get grader result
-    grader = get_grader_result(session_id, base_url)
+    # 3. Get grader result
+    grader = get_grader_result(session_id, base_url) if verdict_submitted else None
+    
+    if not verdict_submitted:
+        print(f"  [{task_id}] WARNING: Episode ended without submitting a verdict (max steps hit or all parses failed)")
+    elif grader is None:
+        print(f"  [{task_id}] WARNING: Verdict was submitted but grader returned nothing (server-side issue)")
 
     return {
         "task_id": task_id,
         "difficulty": difficulty,
+        "final_score": grader["final_score"] if grader else 0.0,
         "final_reward": final_reward,
         "grader": grader,
     }
@@ -188,7 +259,7 @@ def main():
         for task in sample:
             result = run_episode(task["id"], difficulty, base_url)
             results.append(result)
-            print(f"  {task['id']}: {result['grader']['final_score']}")
+            print(f"  {task['id']}: {result['final_reward']:.3f}")
             print("---"*25, "\n")
 
     print("\n=== BASELINE SUMMARY ===")
