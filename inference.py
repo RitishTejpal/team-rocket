@@ -1,13 +1,19 @@
 from openai import OpenAI
 import requests, json, re
 import random, argparse
-from SciCheck.core.config import get_settings
+from core.config import get_settings
 
 settings = get_settings()
-client = OpenAI(api_key=settings.groq_api_key, 
-                base_url="https://api.groq.com/openai/v1")
+if settings.hf_token:
+    client = OpenAI(api_key=settings.hf_token, base_url=settings.api_base_url)
+else:
+    print("CONFIG ERROR: Set the HF Token in the .env file.")
+    exit(1)
 
+
+# ------------------------------------
 # Helper Functions
+# ------------------------------------
 
 def get_tasks(base_url: str) -> list[dict]:
     response = requests.get(f"{base_url}/tasks")
@@ -45,7 +51,10 @@ def get_grader_result(session_id: str, base_url: str) -> dict:
     response.raise_for_status()
     return response.json()
 
+
+# ------------------------------------
 # Prompts and Parsing
+# ------------------------------------
 
 SECTION_LIMITS = {
     "abstract":    4000,
@@ -113,7 +122,7 @@ If your action is submit_verdict, output ONLY this JSON:
 
 def call_llm(prompt: str) -> dict:
     response = client.chat.completions.create(
-        model=settings.openai_model,
+        model=settings.model_name,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
     )
@@ -155,7 +164,10 @@ def parse_response(raw_text: str, available_tools: list) -> tuple[str, dict | No
     except Exception:
         return None, None
 
-# Baseline Main
+
+# ------------------------------------
+# Episode Runner
+# ------------------------------------
 
 FALLBACK_VERDICT = {
     "easy":   "overstated",
@@ -169,6 +181,9 @@ MAX_STEPS = {
 }
 
 def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
+    # [START]
+    print(json.dumps({"log": "[START]", "task_id": task_id, "difficulty": difficulty}))
+
     # 1. Reset
     # print(task_id, difficulty)
     session_id, obs = reset_episode(task_id, base_url)
@@ -181,26 +196,20 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
 
     # 2. Agentic loop
     for step in range(max_steps):
-        print(f"  [{task_id}] Step {step + 1}/{max_steps} | available: {available_tools}")
-        
         # 2.1 Ask llm what to do next
         raw = call_llm(build_prompt(press_release, fetched_sections, available_tools))
-        print(raw)
         action, verdict = parse_response(raw, available_tools)
 
         if action is None:
             if fetched_sections:
                 action = "submit_verdict"
                 verdict = {"overall": FALLBACK_VERDICT[difficulty], "divergences": []}
-                print(f"  [{task_id}] Parse failed - falling back to submit with default verdict")
             else:
                 action = "fetch_abstract"
-                print(f"  [{task_id}] Parse failed with no sections read - fetching abstract first")
-
+                
         # 2.2 if submit, ask for verdict
         if action == "submit_verdict":
             if verdict is None:
-                print(f"  [{task_id}] parse_verdict failed - using fallback")
                 verdict = {
                     "overall": FALLBACK_VERDICT[difficulty], 
                     "divergences": []
@@ -208,35 +217,58 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
 
             obs, final_reward, done = step_episode(session_id, "submit_verdict", base_url, verdict)
             verdict_submitted = True
-            print(f"  [{task_id}] Submitted verdict -> reward={final_reward:.3f} | done={done}")
+            # [STEP]
+            print(json.dumps({
+                "log":      "[STEP]",
+                "task_id":  task_id,
+                "step":     step + 1,
+                "action":   "submit_verdict",
+                "reward":   round(final_reward, 4),
+                "done":     done,
+            }))
             break
 
-        # 2.3 Execute the fetch action  
+        # 2.3 fetch action  
         obs, reward, done = step_episode(session_id, action, base_url)
         fetched_sections = obs["fetched_sections"]
         available_tools = obs["available_tools"]
-        print(f"  [{task_id}] {action} -> reward={reward:.3f} | done={done}")
+        # [STEP]
+        print(json.dumps({
+                "log":      "[STEP]",
+                "task_id":  task_id,
+                "step":     step + 1,
+                "action":   "submit_verdict",
+                "reward":   round(final_reward, 4),
+                "done":     done,
+            }))
 
         if done:    # Max steps exceeded
-            print(f"  [{task_id}] Episode force-closed by environment")
             break
 
     # 3. Get grader result
     grader = get_grader_result(session_id, base_url) if verdict_submitted else None
-    
-    if not verdict_submitted:
-        print(f"  [{task_id}] WARNING: Episode ended without submitting a verdict (max steps hit or all parses failed)")
-    elif grader is None:
-        print(f"  [{task_id}] WARNING: Verdict was submitted but grader returned nothing (server-side issue)")
+    score = grader["final_score"] if grader else 0.0
+    # [END]
+    print(json.dumps({
+        "log":      "[END]",
+        "task_id":  task_id,
+        "score":    round(score, 4),
+        "reward":   round(final_reward, 4),
+        "difficulty": difficulty,
+    }))
 
     return {
         "task_id": task_id,
         "difficulty": difficulty,
-        "final_score": grader["final_score"] if grader else 0.0,
+        "final_score": score,
         "final_reward": final_reward,
         "grader": grader,
     }
 
+
+# ------------------------------------
+# Main
+# ------------------------------------
 
 RANDOM_SEED = 42
 EPISODES_PER_DIFFICULTY = 5
@@ -265,8 +297,9 @@ def main():
     print("\n=== BASELINE SUMMARY ===")
     for difficulty in ["easy", "medium", "hard"]:
         subset = [r for r in results if r["difficulty"] == difficulty]
-        avg = sum(r["final_reward"] for r in subset) / len(subset)
-        print(f"  {difficulty:<8} avg score: {avg:.3f}  ({len(subset)} episodes)")
+        if subset:
+            avg = sum(r["final_reward"] for r in subset) / len(subset)
+            print(f"  {difficulty:<8} avg score: {avg:.3f}  ({len(subset)} episodes)")
 
     with open("baseline_results.json", "w") as f:
         json.dump(results, f, indent=2)

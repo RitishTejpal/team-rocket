@@ -6,9 +6,8 @@
 
 """SciCheck — science misinformation investigation environment."""
 
-from .models import DivergenceType, SciCheckAction, SciCheckObservation, SciCheckState
-from .server.environment import SciCheckEnvironment
-
+from models import DivergenceType, SciCheckAction, SciCheckObservation, SciCheckState
+from server.environment import SciCheckEnvironment
 __all__ = [
     "DivergenceType",
     "SciCheckAction",

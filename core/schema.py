@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from SciCheck.models import SciCheckObservation
+from models import SciCheckObservation
 
 
 class ResetRequest(BaseModel):

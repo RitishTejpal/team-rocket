@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from SciCheck.server.environment import SciCheckEnvironment
+from server.environment import SciCheckEnvironment
 
 router = APIRouter(tags=["meta"])
 

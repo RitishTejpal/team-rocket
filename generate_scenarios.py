@@ -1,14 +1,14 @@
 import json
 from collections import Counter
 from typing import TypedDict
-from SciCheck.services.fetch import (
+from services.fetch import (
     DOMAINS,
     fetch_pmcids_for_domain,
     fetch_full_text,
     parse_sections, is_usable_paper
 )
-from SciCheck.services.engine import run_distortion_engine, DIFFICULTY_CONFIG
-from SciCheck.services.groq_pr import build_press_release
+from services.engine import run_distortion_engine, DIFFICULTY_CONFIG
+from services.groq_pr import build_press_release
 from pathlib import Path
 
 SCENARIOS_PATH = Path(__file__).parent / "data" / "scenarios.json"

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
-from SciCheck.server.session_store import get_session
+from server.session_store import get_session
 router = APIRouter(tags=["debug"])
 
 @router.get("/state")
