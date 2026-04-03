@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from typing import Optional
-from SciCheck.server.environment import SciCheckEnvironment
+from server.environment import SciCheckEnvironment
 
 # Session pool  { session_id -> SciCheckEnvironment }
 _sessions: dict[str, SciCheckEnvironment] = {}

@@ -1,4 +1,4 @@
-from SciCheck.core.config import get_settings
+from core.config import get_settings
 from groq import Groq, RateLimitError
 import time
 

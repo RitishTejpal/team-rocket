@@ -8,9 +8,15 @@ class Settings(BaseSettings):
         case_sensitive=False
     )
 
+    # Generation
     groq_api_key: str
     groq_model_name: str = "llama-3.1-8b-instant" 
-    openai_model: str = "openai/gpt-oss-120b"
+
+    # Inference Script
+    hf_token: str
+    model_name: str = "openai/gpt-oss-120b"
+    api_base_url: str = "https://router.huggingface.co/v1"
+
     
 @lru_cache
 def get_settings() -> Settings:

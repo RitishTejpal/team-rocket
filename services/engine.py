@@ -1,5 +1,5 @@
 import random
-from SciCheck.services.distortions import (
+from services.distortions import (
     apply_scope_inflation, apply_certainty_inflation,
     apply_magnitude_distortion, apply_hedging_stripped,
     apply_population_generalized, apply_causal_overclaim,

@@ -21,13 +21,12 @@ Usage:
 """
 
 from contextlib import asynccontextmanager
-from typing import Optional
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 
-from SciCheck.server.environment import SciCheckEnvironment
-from SciCheck.server.routes.episode import router as episode_router
-from SciCheck.server.routes.debug import router as debug_router
-from SciCheck.server.routes.meta import router as meta_router
+from server.environment import SciCheckEnvironment
+from server.routes.episode import router as episode_router
+from server.routes.debug import router as debug_router
+from server.routes.meta import router as meta_router
 
 # ---------------------------------------------------------------------------
 # App
@@ -42,7 +41,7 @@ async def lifespan(app: FastAPI):
         pass 
     yield
 
-app = FastAPI(
+scicheck_app = FastAPI(
     title="SciCheck",
     description=(
         "A multi-step investigation environment where an AI agent must "
@@ -56,9 +55,9 @@ app = FastAPI(
 # Routes
 # ---------------------------------------------------------------------------
 
-app.include_router(episode_router)
-app.include_router(debug_router)
-app.include_router(meta_router)
+scicheck_app.include_router(episode_router)
+scicheck_app.include_router(debug_router)
+scicheck_app.include_router(meta_router)
 
 # ---------------------------------------------------------------------------
 # Entrypoint
@@ -66,14 +65,10 @@ app.include_router(meta_router)
 
 
 def main(host: str = "0.0.0.0", port: int = 8000) -> None:
+    """Start the uvicorn server. Called directly by OpenEnv."""
     import uvicorn
-    uvicorn.run(app, host=host, port=port)
-
-
+    uvicorn.run(scicheck_app, host=host, port=port)
+ 
+ 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8000)
-    args = parser.parse_args()
-    main(port=args.port)
+    main()

@@ -2,48 +2,25 @@
   {
     "task_id": "scenario_021",
     "difficulty": "easy",
-    "final_reward": 0.5423728813559322,
-    "grader": {
-      "task_id": "scenario_021",
-      "difficulty": "easy",
-      "raw_verdict_score": 0.5,
-      "max_possible_verdict": 0.8,
-      "checks": [
-        {
-          "check": "overall_verdict:overstated",
-          "passed": true,
-          "points": 0.3
-        },
-        {
-          "check": "divergence_type:certainty_inflation",
-          "passed": false,
-          "points": 0.0
-        },
-        {
-          "check": "section_fetched:abstract",
-          "passed": true,
-          "points": 0.2
-        }
-      ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.5,
-      "final_score": 0.5424
-    }
+    "final_score": 0.0,
+    "final_reward": 0.0,
+    "grader": null
   },
   {
     "task_id": "scenario_004",
     "difficulty": "easy",
-    "final_reward": 0.5423728813559322,
+    "final_score": 0.2373,
+    "final_reward": 0.23728813559322032,
     "grader": {
       "task_id": "scenario_004",
       "difficulty": "easy",
-      "raw_verdict_score": 0.5,
+      "raw_verdict_score": 0.2,
       "max_possible_verdict": 0.8,
       "checks": [
         {
           "check": "overall_verdict:overstated",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:certainty_inflation",
@@ -56,17 +33,82 @@
           "points": 0.2
         }
       ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.5,
-      "final_score": 0.5424
+      "trajectory_score": 0.0,
+      "verdict_score": 0.2,
+      "final_score": 0.2373
     }
   },
   {
     "task_id": "scenario_001",
     "difficulty": "easy",
-    "final_reward": 0.18644067796610167,
+    "final_score": 0.1356,
+    "final_reward": 0.13559322033898305,
     "grader": {
       "task_id": "scenario_001",
+      "difficulty": "easy",
+      "raw_verdict_score": 0.2,
+      "max_possible_verdict": 0.8,
+      "checks": [
+        {
+          "check": "overall_verdict:overstated",
+          "passed": false,
+          "points": 0.0
+        },
+        {
+          "check": "divergence_type:certainty_inflation",
+          "passed": false,
+          "points": 0.0
+        },
+        {
+          "check": "section_fetched:abstract",
+          "passed": true,
+          "points": 0.2
+        }
+      ],
+      "trajectory_score": -0.2,
+      "verdict_score": 0.2,
+      "final_score": 0.1356
+    }
+  },
+  {
+    "task_id": "scenario_009",
+    "difficulty": "easy",
+    "final_score": 0.5424,
+    "final_reward": 0.5423728813559322,
+    "grader": {
+      "task_id": "scenario_009",
+      "difficulty": "easy",
+      "raw_verdict_score": 0.5,
+      "max_possible_verdict": 0.8,
+      "checks": [
+        {
+          "check": "overall_verdict:overstated",
+          "passed": true,
+          "points": 0.3
+        },
+        {
+          "check": "divergence_type:certainty_inflation",
+          "passed": false,
+          "points": 0.0
+        },
+        {
+          "check": "section_fetched:abstract",
+          "passed": true,
+          "points": 0.2
+        }
+      ],
+      "trajectory_score": -0.1,
+      "verdict_score": 0.5,
+      "final_score": 0.5424
+    }
+  },
+  {
+    "task_id": "scenario_008",
+    "difficulty": "easy",
+    "final_score": 0.1864,
+    "final_reward": 0.18644067796610167,
+    "grader": {
+      "task_id": "scenario_008",
       "difficulty": "easy",
       "raw_verdict_score": 0.2,
       "max_possible_verdict": 0.8,
@@ -93,81 +135,20 @@
     }
   },
   {
-    "task_id": "scenario_009",
-    "difficulty": "easy",
-    "final_reward": 0.8983050847457626,
-    "grader": {
-      "task_id": "scenario_009",
-      "difficulty": "easy",
-      "raw_verdict_score": 0.8,
-      "max_possible_verdict": 0.8,
-      "checks": [
-        {
-          "check": "overall_verdict:overstated",
-          "passed": true,
-          "points": 0.3
-        },
-        {
-          "check": "divergence_type:certainty_inflation",
-          "passed": true,
-          "points": 0.3
-        },
-        {
-          "check": "section_fetched:abstract",
-          "passed": true,
-          "points": 0.2
-        }
-      ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.8,
-      "final_score": 0.8983
-    }
-  },
-  {
-    "task_id": "scenario_008",
-    "difficulty": "easy",
-    "final_reward": 0.5423728813559322,
-    "grader": {
-      "task_id": "scenario_008",
-      "difficulty": "easy",
-      "raw_verdict_score": 0.5,
-      "max_possible_verdict": 0.8,
-      "checks": [
-        {
-          "check": "overall_verdict:overstated",
-          "passed": true,
-          "points": 0.3
-        },
-        {
-          "check": "divergence_type:certainty_inflation",
-          "passed": false,
-          "points": 0.0
-        },
-        {
-          "check": "section_fetched:abstract",
-          "passed": true,
-          "points": 0.2
-        }
-      ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.5,
-      "final_score": 0.5424
-    }
-  },
-  {
     "task_id": "scenario_037",
     "difficulty": "medium",
-    "final_reward": 0.42553191489361697,
+    "final_score": 0.0,
+    "final_reward": 0.0,
     "grader": {
       "task_id": "scenario_037",
       "difficulty": "medium",
-      "raw_verdict_score": 0.7,
+      "raw_verdict_score": 0.0,
       "max_possible_verdict": 1.3,
       "checks": [
         {
           "check": "overall_verdict:misinterpreted",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:causal_overclaim",
@@ -176,8 +157,8 @@
         },
         {
           "check": "section_fetched:methods",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:population_generalized",
@@ -186,23 +167,24 @@
         },
         {
           "check": "section_fetched:methods",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         }
       ],
-      "trajectory_score": -0.3,
-      "verdict_score": 0.7,
-      "final_score": 0.4255
+      "trajectory_score": -0.4,
+      "verdict_score": 0.0,
+      "final_score": 0.0
     }
   },
   {
     "task_id": "scenario_026",
     "difficulty": "medium",
-    "final_reward": 0.42553191489361697,
+    "final_score": 0.234,
+    "final_reward": 0.23404255319148934,
     "grader": {
       "task_id": "scenario_026",
       "difficulty": "medium",
-      "raw_verdict_score": 0.7,
+      "raw_verdict_score": 0.4,
       "max_possible_verdict": 1.3,
       "checks": [
         {
@@ -222,8 +204,8 @@
         },
         {
           "check": "divergence_type:hedging_stripped",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "section_fetched:methods",
@@ -231,19 +213,20 @@
           "points": 0.2
         }
       ],
-      "trajectory_score": -0.3,
-      "verdict_score": 0.7,
-      "final_score": 0.4255
+      "trajectory_score": -0.2,
+      "verdict_score": 0.4,
+      "final_score": 0.234
     }
   },
   {
     "task_id": "scenario_025",
     "difficulty": "medium",
-    "final_reward": 0.25773195876288657,
+    "final_score": 0.0,
+    "final_reward": 0.0,
     "grader": {
       "task_id": "scenario_025",
       "difficulty": "medium",
-      "raw_verdict_score": 0.4,
+      "raw_verdict_score": 0.0,
       "max_possible_verdict": 1.3,
       "checks": [
         {
@@ -258,8 +241,8 @@
         },
         {
           "check": "section_fetched:stats",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:hedging_stripped",
@@ -268,29 +251,30 @@
         },
         {
           "check": "section_fetched:methods",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         }
       ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.4,
-      "final_score": 0.2577
+      "trajectory_score": -0.3,
+      "verdict_score": 0.0,
+      "final_score": 0.0
     }
   },
   {
     "task_id": "scenario_024",
     "difficulty": "medium",
-    "final_reward": 0.648936170212766,
+    "final_score": 0.1596,
+    "final_reward": 0.1595744680851064,
     "grader": {
       "task_id": "scenario_024",
       "difficulty": "medium",
-      "raw_verdict_score": 1.0,
+      "raw_verdict_score": 0.3,
       "max_possible_verdict": 1.3,
       "checks": [
         {
           "check": "overall_verdict:misinterpreted",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:causal_overclaim",
@@ -299,8 +283,8 @@
         },
         {
           "check": "section_fetched:methods",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:population_generalized",
@@ -309,29 +293,30 @@
         },
         {
           "check": "section_fetched:methods",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         }
       ],
-      "trajectory_score": -0.3,
-      "verdict_score": 1.0,
-      "final_score": 0.6489
+      "trajectory_score": -0.2,
+      "verdict_score": 0.3,
+      "final_score": 0.1596
     }
   },
   {
     "task_id": "scenario_043",
     "difficulty": "medium",
-    "final_reward": 0.20212765957446804,
+    "final_score": 0.0957,
+    "final_reward": 0.09574468085106383,
     "grader": {
       "task_id": "scenario_043",
       "difficulty": "medium",
-      "raw_verdict_score": 0.4,
+      "raw_verdict_score": 0.3,
       "max_possible_verdict": 1.3,
       "checks": [
         {
           "check": "overall_verdict:misinterpreted",
-          "passed": false,
-          "points": 0.0
+          "passed": true,
+          "points": 0.3
         },
         {
           "check": "divergence_type:population_generalized",
@@ -340,8 +325,8 @@
         },
         {
           "check": "section_fetched:methods",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:hedging_stripped",
@@ -350,29 +335,30 @@
         },
         {
           "check": "section_fetched:methods",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         }
       ],
-      "trajectory_score": -0.3,
-      "verdict_score": 0.4,
-      "final_score": 0.2021
+      "trajectory_score": -0.4,
+      "verdict_score": 0.3,
+      "final_score": 0.0957
     }
   },
   {
     "task_id": "scenario_030",
     "difficulty": "hard",
-    "final_reward": 0.75,
+    "final_score": 0.2407,
+    "final_reward": 0.24074074074074073,
     "grader": {
       "task_id": "scenario_030",
       "difficulty": "hard",
-      "raw_verdict_score": 1.2,
+      "raw_verdict_score": 0.5,
       "max_possible_verdict": 1.5,
       "checks": [
         {
           "check": "overall_verdict:misleading_by_omission",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "results_fetched",
@@ -381,8 +367,8 @@
         },
         {
           "check": "limitations_fetched",
-          "passed": true,
-          "points": 0.1
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:certainty_inflation",
@@ -396,8 +382,8 @@
         },
         {
           "check": "divergence_type:population_generalized",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "section_fetched:results",
@@ -405,19 +391,20 @@
           "points": 0.2
         }
       ],
-      "trajectory_score": -0.1,
-      "verdict_score": 1.2,
-      "final_score": 0.75
+      "trajectory_score": -0.3,
+      "verdict_score": 0.5,
+      "final_score": 0.2407
     }
   },
   {
     "task_id": "scenario_029",
     "difficulty": "hard",
-    "final_reward": 0.36111111111111116,
+    "final_score": 0.2685,
+    "final_reward": 0.26851851851851855,
     "grader": {
       "task_id": "scenario_029",
       "difficulty": "hard",
-      "raw_verdict_score": 0.6000000000000001,
+      "raw_verdict_score": 0.5,
       "max_possible_verdict": 1.5,
       "checks": [
         {
@@ -432,8 +419,8 @@
         },
         {
           "check": "limitations_fetched",
-          "passed": true,
-          "points": 0.1
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:hedging_stripped",
@@ -456,19 +443,20 @@
           "points": 0.2
         }
       ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.6,
-      "final_score": 0.3611
+      "trajectory_score": -0.2,
+      "verdict_score": 0.5,
+      "final_score": 0.2685
     }
   },
   {
     "task_id": "scenario_031",
     "difficulty": "hard",
-    "final_reward": 0.5555555555555555,
+    "final_score": 0.2685,
+    "final_reward": 0.26851851851851855,
     "grader": {
       "task_id": "scenario_031",
       "difficulty": "hard",
-      "raw_verdict_score": 0.8999999999999999,
+      "raw_verdict_score": 0.5,
       "max_possible_verdict": 1.5,
       "checks": [
         {
@@ -483,13 +471,13 @@
         },
         {
           "check": "limitations_fetched",
-          "passed": true,
-          "points": 0.1
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:certainty_inflation",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "section_fetched:results",
@@ -507,19 +495,20 @@
           "points": 0.2
         }
       ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.9,
-      "final_score": 0.5556
+      "trajectory_score": -0.2,
+      "verdict_score": 0.5,
+      "final_score": 0.2685
     }
   },
   {
     "task_id": "scenario_035",
     "difficulty": "hard",
-    "final_reward": 0.75,
+    "final_score": 0.0833,
+    "final_reward": 0.08333333333333334,
     "grader": {
       "task_id": "scenario_035",
       "difficulty": "hard",
-      "raw_verdict_score": 1.2,
+      "raw_verdict_score": 0.3,
       "max_possible_verdict": 1.5,
       "checks": [
         {
@@ -529,13 +518,13 @@
         },
         {
           "check": "results_fetched",
-          "passed": true,
-          "points": 0.1
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "limitations_fetched",
-          "passed": true,
-          "points": 0.1
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:certainty_inflation",
@@ -544,33 +533,34 @@
         },
         {
           "check": "section_fetched:results",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:hedging_stripped",
-          "passed": true,
-          "points": 0.3
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "section_fetched:results",
-          "passed": true,
-          "points": 0.2
+          "passed": false,
+          "points": 0.0
         }
       ],
-      "trajectory_score": -0.1,
-      "verdict_score": 1.2,
-      "final_score": 0.75
+      "trajectory_score": -0.4,
+      "verdict_score": 0.3,
+      "final_score": 0.0833
     }
   },
   {
     "task_id": "scenario_036",
     "difficulty": "hard",
-    "final_reward": 0.5555555555555555,
+    "final_score": 0.463,
+    "final_reward": 0.46296296296296297,
     "grader": {
       "task_id": "scenario_036",
       "difficulty": "hard",
-      "raw_verdict_score": 0.8999999999999999,
+      "raw_verdict_score": 0.8,
       "max_possible_verdict": 1.5,
       "checks": [
         {
@@ -585,8 +575,8 @@
         },
         {
           "check": "limitations_fetched",
-          "passed": true,
-          "points": 0.1
+          "passed": false,
+          "points": 0.0
         },
         {
           "check": "divergence_type:population_generalized",
@@ -609,9 +599,9 @@
           "points": 0.2
         }
       ],
-      "trajectory_score": -0.1,
-      "verdict_score": 0.9,
-      "final_score": 0.5556
+      "trajectory_score": -0.2,
+      "verdict_score": 0.8,
+      "final_score": 0.463
     }
   }
 ]

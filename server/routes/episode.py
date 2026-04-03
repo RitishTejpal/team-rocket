@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Header, HTTPException
 from typing import Optional
 import uuid
-from SciCheck.server.session_store import _sessions, get_session
-from SciCheck.models import SciCheckAction
-from SciCheck.core.schema import ResetRequest, ResetResponse, StepResponse
-from SciCheck.server.environment import SciCheckEnvironment
+from server.session_store import _sessions, get_session
+from models import SciCheckAction
+from core.schema import ResetRequest, ResetResponse, StepResponse
+from server.environment import SciCheckEnvironment
 
 router = APIRouter(tags=["episode"])
 
