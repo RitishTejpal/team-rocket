@@ -1,3 +1,12 @@
+---
+title: SciCheck
+emoji: 🔬
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # SciCheck: A Scientific Claim Verification Environment for LLM Agents
 
 In today's world, where fact-checking has become a rare event, it's important to ponder what their origin is. Talking specifically about science misinformations - they hardly originate in tabloids, rather in a press release. Then journalists copy them verbatim, and public reads only the headlines. Nobody goes back to the paper.
