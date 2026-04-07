@@ -3,5 +3,5 @@ name: scicheck
 type: space
 runtime: fastapi
 app: server.app:scicheck_app
-port: 8000
+port: 7860
  
