@@ -104,6 +104,11 @@ So if you fetch now, you have {steps_remaining - 1} steps left.
 
 Think carefully: which ONE section is most likely to contain the distortion?
 Fetch only that section, then submit.
+Overall verdict definitions:
+- "accurate": press release faithfully represents the paper
+- "overstated": findings are real but magnitude/scope is exaggerated  
+- "misinterpreted": the nature of the finding is changed (correlation -> causation, wrong population, hedging removed)
+- "misleading_by_omission": key limitations or caveats are silently omitted
 
 PRESS RELEASE:
 {press_release}
@@ -149,6 +154,7 @@ def call_llm(prompt: str) -> dict:
         model=settings.model_name,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
+        tool_choice=None
     )
     return response.choices[0].message.content
 
@@ -285,7 +291,7 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
 # ------------------------------------
 
 RANDOM_SEED = 42
-EPISODES_PER_DIFFICULTY = 5
+EPISODES_PER_DIFFICULTY = 3
 
 def main():
     parser = argparse.ArgumentParser()
