@@ -130,8 +130,8 @@ Naive LLM agent (`seed=42`, `temperature=0.0`) across 15 episodes (5 per difficu
 | Difficulty | Avg Score | Notes |
 |---|---|---|
 | Easy | ~0.33 | Correctly identifies overstated verdicts, fetches abstract inconsistently |
-| Medium | ~0.23 | Sometimes identifies misinterpreted verdicts, misses specific divergence types |
-| Hard | ~0.33 | Fetches results section correctly but misses divergence type identification |
+| Medium | ~0.27 | Sometimes identifies misinterpreted verdicts, misses specific divergence types |
+| Hard | ~0.37 | Fetches results section correctly but misses divergence type identification |
 
 Full results in `baseline_results.json`.
 
