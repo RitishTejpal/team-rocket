@@ -11,7 +11,7 @@ router = APIRouter(tags=["episode"])
 
 @router.post("/reset", response_model=ResetResponse)
 def reset(
-    body: ResetRequest,
+    body: Optional[ResetRequest] = None,
     x_session_id: Optional[str] = Header(None),
 ) -> ResetResponse:
     """
@@ -34,7 +34,10 @@ def reset(
 
     env = _sessions[sid]
     try:
-        obs = env.reset(task_id=body.task_id, difficulty=body.difficulty)
+        obs = env.reset(
+            task_id=body.task_id if body else None,
+            difficulty=body.difficulty if body else None,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
