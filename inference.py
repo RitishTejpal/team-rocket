@@ -1,6 +1,6 @@
 from openai import OpenAI
-import requests, json, re
-import random, argparse
+import requests, json, subprocess, time
+import random, argparse, sys
 from core.config import get_settings
 
 settings = get_settings()
@@ -287,43 +287,114 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
 
 
 # ------------------------------------
+# Server startup helper
+# ------------------------------------
+ 
+def start_server(port: int = 7860) -> subprocess.Popen:
+    """Launch the uvicorn server as a subprocess and return the process handle."""
+    cmd = [
+        sys.executable, "-m", "uvicorn",
+        "server.app:scicheck_app",
+        "--host", "0.0.0.0",
+        "--port", str(port),
+    ]
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    print(f"[SERVER] Started uvicorn on port {port} (pid={proc.pid})", flush=True)
+    return proc
+ 
+ 
+def wait_for_server(base_url: str, timeout: int = 60, interval: float = 2.0) -> None:
+    """Block until the server responds on /health (or /tasks), or raise on timeout."""
+    deadline = time.time() + timeout
+    last_err = None
+    while time.time() < deadline:
+        try:
+            r = requests.get(f"{base_url}/health", timeout=3)
+            if r.status_code < 500:
+                print(f"[SERVER] Ready at {base_url}", flush=True)
+                return
+        except requests.exceptions.ConnectionError as e:
+            last_err = e
+        print(f"[SERVER] Waiting for server at {base_url} ...", flush=True)
+        time.sleep(interval)
+    raise RuntimeError(
+        f"[SERVER] Did not become ready within {timeout}s. Last error: {last_err}"
+    )
+ 
+
+# ------------------------------------
 # Main
 # ------------------------------------
 
 RANDOM_SEED = 42
 EPISODES_PER_DIFFICULTY = 3
 
+PORT_REMAP = {8000: 7860}
+ 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://localhost:8000")
     args = parser.parse_args()
     base_url = args.base_url
-
-    random.seed(RANDOM_SEED)
-    all_tasks = get_tasks(base_url)
-    results = []
-
-    for difficulty in ["easy", "medium", "hard"]:
-        pool = [t for t in all_tasks if t["difficulty"] == difficulty]
-        sample = random.sample(pool, min(EPISODES_PER_DIFFICULTY, len(pool)))
-        print(f"\n--- {difficulty.upper()} ({len(sample)} episodes) ---")
-
-        for task in sample:
-            result = run_episode(task["id"], difficulty, base_url)
-            results.append(result)
-            print("---"*25, "\n")
-
-    print("\n=== BASELINE SUMMARY ===")
-    for difficulty in ["easy", "medium", "hard"]:
-        subset = [r for r in results if r["difficulty"] == difficulty]
-        if subset:
-            avg = sum(r["final_reward"] for r in subset) / len(subset)
-            print(f"  {difficulty:<8} avg score: {avg:.3f}  ({len(subset)} episodes)")
-
-    with open("baseline_results.json", "w") as f:
-        json.dump(results, f, indent=2)
-    print("\nSaved to baseline_results.json")
-
+ 
+    # --- Remap port if needed and auto-start the server ---
+    from urllib.parse import urlparse, urlunparse
+    parsed = urlparse(base_url)
+    server_port = PORT_REMAP.get(parsed.port, parsed.port)
+    if server_port != parsed.port:
+        # Rewrite base_url to the real port
+        base_url = urlunparse(parsed._replace(netloc=f"{parsed.hostname}:{server_port}"))
+        print(f"[SERVER] Remapped base-url to {base_url}", flush=True)
+ 
+    # Check if the server is already up; if not, start it ourselves.
+    server_proc = None
+    try:
+        requests.get(f"{base_url}/health", timeout=2)
+        print("[SERVER] Server already running, skipping auto-start.", flush=True)
+    except requests.exceptions.ConnectionError:
+        server_proc = start_server(port=server_port)
+ 
+    try:
+        wait_for_server(base_url, timeout=60)
+ 
+        random.seed(RANDOM_SEED)
+        all_tasks = get_tasks(base_url)
+        results = []
+ 
+        for difficulty in ["easy", "medium", "hard"]:
+            pool = [t for t in all_tasks if t["difficulty"] == difficulty]
+            sample = random.sample(pool, min(EPISODES_PER_DIFFICULTY, len(pool)))
+            print(f"\n--- {difficulty.upper()} ({len(sample)} episodes) ---")
+ 
+            for task in sample:
+                result = run_episode(task["id"], difficulty, base_url)
+                results.append(result)
+                print("---"*25, "\n")
+ 
+        print("\n=== BASELINE SUMMARY ===")
+        for difficulty in ["easy", "medium", "hard"]:
+            subset = [r for r in results if r["difficulty"] == difficulty]
+            if subset:
+                avg = sum(r["final_reward"] for r in subset) / len(subset)
+                print(f"  {difficulty:<8} avg score: {avg:.3f}  ({len(subset)} episodes)")
+ 
+        with open("baseline_results.json", "w") as f:
+            json.dump(results, f, indent=2)
+        print("\nSaved to baseline_results.json")
+ 
+    finally:
+        # Clean up the server subprocess if we started it
+        if server_proc is not None:
+            print(f"[SERVER] Shutting down uvicorn (pid={server_proc.pid})", flush=True)
+            server_proc.terminate()
+            try:
+                server_proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                server_proc.kill()
 
 if __name__ == "__main__":
     main()
