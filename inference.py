@@ -6,9 +6,26 @@ from core.config import get_settings
 settings = get_settings()
 if settings.hf_token:
     client = OpenAI(api_key=settings.hf_token, base_url=settings.api_base_url)
+    # client = OpenAI(api_key=settings.groq_api_key, base_url="https://api.groq.com/openai/v1")
 else:
     print("CONFIG ERROR: Set the HF Token in the .env file.")
     exit(1)
+
+
+# ------------------------------------
+# Stdout Logging  -  SPEC-REQUIRED FORMAT
+# ------------------------------------
+ 
+def log_start(task_id, model):
+    print(f"[START] task={task_id} env=scicheck model={model}", flush=True)
+
+def log_step(step, action, reward, done, error=None):
+    error_val = error if error else "null"
+    print(f"[STEP] step={step} action={action} reward={reward:.2f} done={str(done).lower()} error={error_val}", flush=True)
+
+def log_end(success, steps, score, rewards):
+    rewards_str = ",".join(f"{r:.2f}" for r in rewards)
+    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
 
 
 # ------------------------------------
@@ -21,7 +38,6 @@ def get_tasks(base_url: str) -> list[dict]:
     return response.json()
 
 def reset_episode(task_id: str, base_url: str) -> dict:
-    print(f"Resetting episode with task_id={task_id}")
     response = requests.post(f"{base_url}/reset", json={"task_id": task_id})
 
     if response.status_code != 200:
@@ -64,7 +80,7 @@ SECTION_LIMITS = {
     "stats":       3000,
 }
 
-def build_prompt(press_release: str, fetched_sections: dict, available_tools: list) -> str:
+def build_prompt(press_release: str, fetched_sections: dict, available_tools: list, steps_remaining: int) -> str:
     sections_text = ""
     for section in ["abstract", "methods", "results", "limitations", "stats"]:
         if section in fetched_sections and fetched_sections[section]:
@@ -73,6 +89,7 @@ def build_prompt(press_release: str, fetched_sections: dict, available_tools: li
             if len(text) > limit:
                 text = text[:limit] + "\n... [truncated]"
             sections_text += f"\n[{section.upper()}]\n{text}\n"
+    steps_remaining = steps_remaining
 
     if not sections_text:
         sections_text = "None yet."
@@ -80,6 +97,13 @@ def build_prompt(press_release: str, fetched_sections: dict, available_tools: li
     return f"""You are a scientific fact-checker investigating a press release. The press release may or may not have some disparities with the underlying scientific paper. Given a press release and sections from the underlying paper, you must identify where the press release distorts, exaggerates or misinterprets the research.
 You have access to different sections of the paper that you can fetch one at a time, but fetching is costly. You must decide which section to fetch next, or if you have enough information to submit a final verdict on the press release's accuracy.
 You have the valid fetch tools available for you listed down below.
+You are penalized -0.1 for every section you fetch that contains no distortions,
+and rewarded +0.1 for every relevant section.
+You have {steps_remaining} steps left including the final submit.
+So if you fetch now, you have {steps_remaining - 1} steps left.
+
+Think carefully: which ONE section is most likely to contain the distortion?
+Fetch only that section, then submit.
 
 PRESS RELEASE:
 {press_release}
@@ -176,13 +200,13 @@ FALLBACK_VERDICT = {
 }
 MAX_STEPS = {
     "easy": 3,
-    "medium": 7,
-    "hard": 10,
+    "medium": 5,
+    "hard": 7,
 }
 
 def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
     # [START]
-    print(json.dumps({"log": "[START]", "task_id": task_id, "difficulty": difficulty}))
+    log_start(task_id, settings.model_name)
 
     # 1. Reset
     # print(task_id, difficulty)
@@ -193,12 +217,19 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
     final_reward = 0.0
     max_steps = MAX_STEPS[difficulty]
     verdict_submitted = False
+    rewards_list = []
+    steps_taken = 0
 
     # 2. Agentic loop
     for step in range(max_steps):
+        steps_taken += 1
         # 2.1 Ask llm what to do next
-        raw = call_llm(build_prompt(press_release, fetched_sections, available_tools))
-        action, verdict = parse_response(raw, available_tools)
+        steps_remaining = max_steps - step
+        if steps_remaining == 1 and fetched_sections:
+            action, verdict = "submit_verdict", None
+        else:
+            raw = call_llm(build_prompt(press_release, fetched_sections, available_tools, steps_remaining))
+            action, verdict = parse_response(raw, available_tools)
 
         if action is None:
             if fetched_sections:
@@ -217,45 +248,28 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
 
             obs, final_reward, done = step_episode(session_id, "submit_verdict", base_url, verdict)
             verdict_submitted = True
+            rewards_list.append(final_reward)
             # [STEP]
-            print(json.dumps({
-                "log":      "[STEP]",
-                "task_id":  task_id,
-                "step":     step + 1,
-                "action":   "submit_verdict",
-                "reward":   round(final_reward, 4),
-                "done":     done,
-            }))
+            log_step(steps_taken, action, final_reward, done)
             break
 
         # 2.3 fetch action  
         obs, reward, done = step_episode(session_id, action, base_url)
         fetched_sections = obs["fetched_sections"]
         available_tools = obs["available_tools"]
+        rewards_list.append(reward)
         # [STEP]
-        print(json.dumps({
-                "log":      "[STEP]",
-                "task_id":  task_id,
-                "step":     step + 1,
-                "action":   "submit_verdict",
-                "reward":   round(final_reward, 4),
-                "done":     done,
-            }))
+        log_step(steps_taken, action, reward, done)
 
         if done:    # Max steps exceeded
+            verdict_submitted = True
             break
 
     # 3. Get grader result
     grader = get_grader_result(session_id, base_url) if verdict_submitted else None
     score = grader["final_score"] if grader else 0.0
     # [END]
-    print(json.dumps({
-        "log":      "[END]",
-        "task_id":  task_id,
-        "score":    round(score, 4),
-        "reward":   round(final_reward, 4),
-        "difficulty": difficulty,
-    }))
+    log_end(success=(score > 0), steps=steps_taken, score=score, rewards=rewards_list)
 
     return {
         "task_id": task_id,
@@ -291,7 +305,6 @@ def main():
         for task in sample:
             result = run_episode(task["id"], difficulty, base_url)
             results.append(result)
-            print(f"  {task['id']}: {result['final_reward']:.3f}")
             print("---"*25, "\n")
 
     print("\n=== BASELINE SUMMARY ===")
