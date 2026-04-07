@@ -154,6 +154,7 @@ def call_llm(prompt: str) -> dict:
         model=settings.model_name,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,
+        seed=RANDOM_SEED,
         tool_choice=None
     )
     return response.choices[0].message.content
@@ -366,7 +367,7 @@ def main():
         results = []
  
         for difficulty in ["easy", "medium", "hard"]:
-            pool = [t for t in all_tasks if t["difficulty"] == difficulty]
+            pool = sorted([t for t in all_tasks if t["difficulty"] == difficulty], key=lambda t: t["id"])
             sample = random.sample(pool, min(EPISODES_PER_DIFFICULTY, len(pool)))
             print(f"\n--- {difficulty.upper()} ({len(sample)} episodes) ---")
  
