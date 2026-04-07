@@ -17,7 +17,7 @@ Session management:
     All subsequent calls must include the returned session_id.
 
 Usage:
-    uvicorn SciCheck.server.app:app --reload --host 0.0.0.0 --port 8000
+    uvicorn SciCheck.server.app:app --reload --host 0.0.0.0 --port 7860
 """
 
 from contextlib import asynccontextmanager
@@ -64,7 +64,7 @@ scicheck_app.include_router(meta_router)
 # ---------------------------------------------------------------------------
 
 
-def main(host: str = "0.0.0.0", port: int = 8000) -> None:
+def main(host: str = "0.0.0.0", port: int = 7860) -> None:
     """Start the uvicorn server. Called directly by OpenEnv."""
     import uvicorn
     uvicorn.run(scicheck_app, host=host, port=port)
