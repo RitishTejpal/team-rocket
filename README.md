@@ -72,8 +72,8 @@ All scores are normalized and clamped to `[0.0, 1.0]`.
 | Difficulty | Distortion Section | Distortion Types | Max Steps |
 |---|---|---|---|
 | Easy | Abstract | scope_inflation, certainty_inflation, magnitude_distortion | 3 |
-| Medium | Methods | hedging_stripped, population_generalized, causal_overclaim, stat_fabrication | 5 |
-| Hard | Results | Multiple + misleading_omission | 7 |
+| Medium | Methods | hedging_stripped, population_generalized, causal_overclaim, stat_fabrication | 7 |
+| Hard | Results | Multiple + misleading_omission | 10 |
 
 ---
 
@@ -129,9 +129,9 @@ Naive LLM agent (`seed=42`, `temperature=0.0`) across 15 episodes (5 per difficu
 
 | Difficulty | Avg Score | Notes |
 |---|---|---|
-| Easy | ~0.33 | Correctly identifies overstated verdicts, fetches abstract inconsistently |
-| Medium | ~0.27 | Sometimes identifies misinterpreted verdicts, misses specific divergence types |
-| Hard | ~0.37 | Fetches results section correctly but misses divergence type identification |
+| Easy | ~0.56 | Correctly identifies overstated verdicts, fetches abstract inconsistently |
+| Medium | ~0.10 | Sometimes identifies misinterpreted verdicts, misses specific divergence types |
+| Hard | ~0.11 | Fetches results section correctly but misses divergence type identification |
 
 Full results in `baseline_results.json`.
 
@@ -158,7 +158,6 @@ SciCheck/
     │  uv.lock  
     │
     ├─core  
-    │  │  config.py  
     │  │  schema.py  
     │  └─ __init__.py  
     │          
