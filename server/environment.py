@@ -31,7 +31,7 @@ try:
         Verdict,
     )
 except ImportError:
-    from models import (  # type: ignore[no-redef]
+    from models import (
         ActionType,
         DivergenceType,
         PlantedDistortion,
@@ -56,7 +56,7 @@ MAX_STEPS: dict[TaskDifficulty, int] = {
 
 # Maps ActionType enum value → section name in paper_sections
 FETCH_MAP: dict[ActionType, str] = {
-    ActionType.FETCH_ABSTRACT: "abstract",
+    # ActionType.FETCH_ABSTRACT: "abstract",
     ActionType.FETCH_METHODS: "methods",
     ActionType.FETCH_RESULTS: "results",
     ActionType.FETCH_LIMITATIONS: "limitations",
@@ -127,7 +127,7 @@ class SciCheckEnvironment:
             required_sections_for_full_score=scenario.get(
                 "required_sections_for_full_score", []
             ),
-            fetched_so_far=[],
+            fetched_so_far=["abstract"],
             step_count=0,
             max_steps=MAX_STEPS[diff],
             done=False,
@@ -135,6 +135,7 @@ class SciCheckEnvironment:
             verdict_submitted=None,
             grader_result=None,
         )
+
         return self._make_observation()
 
     def step(

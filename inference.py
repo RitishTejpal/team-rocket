@@ -1,16 +1,17 @@
 from openai import OpenAI
 import requests, json, subprocess, time
-import random, argparse, sys
-from core.config import get_settings
+import random, argparse, sys, os
+from dotenv import load_dotenv
+load_dotenv()
 
-settings = get_settings()
-if settings.hf_token:
-    client = OpenAI(api_key=settings.hf_token, base_url=settings.api_base_url)
-    # client = OpenAI(api_key=settings.groq_api_key, base_url="https://api.groq.com/openai/v1")
-else:
+API_KEY = os.getenv("HF_TOKEN")
+API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+MODEL_NAME = os.getenv("MODEL_NAME") or "Qwen/Qwen2.5-72B-Instruct"
+
+if not API_KEY:
     print("CONFIG ERROR: Set the HF Token in the .env file.")
     exit(1)
-
+client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 # ------------------------------------
 # Stdout Logging  -  SPEC-REQUIRED FORMAT
@@ -55,6 +56,7 @@ def step_episode(session_id: str, action_type: str, base_url: str, verdict: dict
     
     if response.status_code == 404:
         print(f"DEBUG: Check your URL!")
+        print(f"DEBUG /step - response body: {response.text}") 
 
     response.raise_for_status()
     data = response.json()
@@ -80,6 +82,12 @@ SECTION_LIMITS = {
     "stats":       3000,
 }
 
+DIFFICULTY_GUIDANCE = """ 
+    "easy": "The distortion is visible in the abstract. Compare carefully and submit directly.",
+    "medium": "The distortion is subtle and likely NOT visible in the abstract alone. Fetch methods or stats before submitting.", 
+    "hard": "The distortion involves omission or results manipulation. Fetch results AND limitations before submitting.", 
+"""
+
 def build_prompt(press_release: str, fetched_sections: dict, available_tools: list, steps_remaining: int) -> str:
     sections_text = ""
     for section in ["abstract", "methods", "results", "limitations", "stats"]:
@@ -93,71 +101,97 @@ def build_prompt(press_release: str, fetched_sections: dict, available_tools: li
 
     if not sections_text:
         sections_text = "None yet."
+    
+    guidance = DIFFICULTY_GUIDANCE
 
-    return f"""You are a scientific fact-checker investigating a press release. The press release may or may not have some disparities with the underlying scientific paper. Given a press release and sections from the underlying paper, you must identify where the press release distorts, exaggerates or misinterprets the research.
-You have access to different sections of the paper that you can fetch one at a time, but fetching is costly. You must decide which section to fetch next, or if you have enough information to submit a final verdict on the press release's accuracy.
-You have the valid fetch tools available for you listed down below.
-You are penalized -0.1 for every section you fetch that contains no distortions,
-and rewarded +0.1 for every relevant section.
-You have {steps_remaining} steps left including the final submit.
-So if you fetch now, you have {steps_remaining - 1} steps left.
+    return f"""You are a scientific fact-checker. You have been given a press release and the paper's ABSTRACT is already in your sections below.
+The scenarios have a difficulty of easy, medium and hard. You could be presented with any at a time. 
+STRATEGY: {guidance} 
+BUDGET: {steps_remaining} steps remaining (including final submit). Wrong fetches cost -0.1. Your goal is to maximize your score.
 
-Think carefully: which ONE section is most likely to contain the distortion?
-Fetch only that section, then submit.
-Overall verdict definitions:
-- "accurate": press release faithfully represents the paper
-- "overstated": findings are real but magnitude/scope is exaggerated  
-- "misinterpreted": the nature of the finding is changed (correlation -> causation, wrong population, hedging removed)
-- "misleading_by_omission": key limitations or caveats are silently omitted
+STEP 1 - COMPARE CAREFULLY:
+Read the press release and the abstract side by side. Look for:
+- Numbers, percentages, or effect sizes that differ
+- Certainty words added (e.g. "proves", "shows", "confirms") that the abstract doesn't use  
+- Scope expanded (e.g. "all people" when abstract says "elderly patients")
+- Causal language added (e.g. "causes" when abstract says "associated with")
+- Qualifications or hedging removed (e.g. abstract says "may reduce" but PR says "reduces")
+- Key limitations the abstract mentions but the PR omits entirely
+
+STEP 2 - CLASSIFY:
+Pick the SINGLE best verdict:
+- "overstated": findings are real but PR inflates certainty, magnitude, or scope beyond what abstract supports
+- "misinterpreted": PR changes the nature of the finding - adds causation, wrong population, strips hedging, alters statistics
+- "misleading_by_omission": PR is accurate but silently drops key limitations or caveats the abstract mentions
+- "accurate": no distortion found
+
+Divergence type mapping - use this exactly:
+- Certainty words added / probability presented as fact -> "certainty_inflation"
+- Effect size or numbers exaggerated -> "magnitude_distortion"  
+- Scope of finding broadened beyond the data -> "scope_inflation"
+- Causal language where abstract shows only correlation -> "causal_overclaim"
+- Specific population generalized to everyone -> "population_generalized"
+- Hedging or qualifying language stripped out -> "hedging_stripped"
+- Key limitation silently omitted -> "misleading_omission"
+- Statistics changed or fabricated -> "stat_fabrication"
+
+STEP 3 - DECIDE ACTION:
+- If the abstract comparison already reveals the distortion clearly -> submit_verdict immediately. Do NOT fetch more sections.
+- Only fetch one more section if the abstract is genuinely inconclusive AND you know exactly which section to check.
+
 
 PRESS RELEASE:
 {press_release}
 
-SECTIONS YOU HAVE READ SO FAR:
+SECTIONS READ SO FAR (abstract is always here):
 {sections_text}
 
 AVAILABLE ACTIONS:
 {available_tools}
 
-Decide what to do next.
-- Read the press release. Fetch a section of your choice to begin the process of fact checking.
-- If you can already identify distortions from what you have read and feel like there is nothing suspicious about the text anymore, choose submit_verdict.
-- If you need more evidence, fetch the most relevant section as per you.
-- You have a limited step budget. Do NOT fetch sections unnecessarily.
-
-If your action is anything other than submit_verdict, output ONLY this JSON:
+If fetching, output ONLY:
 {{
-    "action": "fetch_abstract | fetch_methods | fetch_results | fetch_limitations | fetch_stats | submit_verdict",
-    "reasoning": "why you chose this"
+    "action": "fetch_methods | fetch_results | fetch_limitations | fetch_stats",
+    "reasoning": "specific claim in PR that contradicts abstract, and why this section will clarify it"
 }}
 
-If your action is submit_verdict, output ONLY this JSON:
+If submitting, output ONLY:
 {{
     "action": "submit_verdict",
-    "reasoning": "why you have enough evidence to decide",
+    "reasoning": "exact comparison between PR claim and what abstract actually says",
     "verdict": {{
-        "overall": "accurate" | "overstated" | "misinterpreted" | "misleading_by_omission",
+        "overall": "overstated | misinterpreted | misleading_by_omission | accurate",
         "divergences": [
         {{
-            "type": "scope_inflation" | "certainty_inflation" | "magnitude_distortion" | "hedging_stripped" | "population_generalized" | "causal_overclaim" | "misleading_omission" | "stat_fabrication",
+            "type": "certainty_inflation | magnitude_distortion | scope_inflation | causal_overclaim | population_generalized | hedging_stripped | misleading_omission | stat_fabrication",
             "pr_quote": "exact sentence from press release that is wrong",
-            "explanation": "why this is wrong based on the paper",
-            "severity": "low" | "medium" | "high"
+            "explanation": "what the abstract actually says vs what the PR claims",
+            "severity": "low | medium | high"
         }}
         ]
     }}
 }}
 """
 
-def call_llm(prompt: str) -> dict:
-    response = client.chat.completions.create(
-        model=settings.model_name,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.0,
-        seed=RANDOM_SEED,
-        tool_choice=None
-    )
-    return response.choices[0].message.content
+def call_llm(prompt: str) -> str:
+    for attempt in range(5):
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                seed=RANDOM_SEED,
+                max_tokens=1000,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if "429" in str(e) or "queue" in str(e).lower() or "rate" in str(e).lower():
+                wait = 10 * (attempt + 1)
+                print(f"[LLM] Rate limited, retrying in {wait}s... (attempt {attempt+1}/5)", flush=True)
+                time.sleep(wait)
+            else:
+                raise
+    raise RuntimeError("[LLM] Failed after 5 retries due to rate limiting.")
 
 def parse_response(raw_text: str, available_tools: list) -> tuple[str, dict | None]:
     valid_overalls = {"accurate", "overstated", "misinterpreted", "misleading_by_omission"}
@@ -201,25 +235,25 @@ def parse_response(raw_text: str, available_tools: list) -> tuple[str, dict | No
 # ------------------------------------
 
 FALLBACK_VERDICT = {
-    "easy":   "overstated",
-    "medium": "misinterpreted",
-    "hard":   "misleading_by_omission",
+    "easy":   "accurate",
+    "medium": "accurate",
+    "hard":   "accurate",
 }
 MAX_STEPS = {
     "easy": 3,
-    "medium": 5,
-    "hard": 7,
+    "medium": 7,
+    "hard": 10,
 }
 
 def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
     # [START]
-    log_start(task_id, settings.model_name)
+    log_start(task_id, MODEL_NAME)
 
     # 1. Reset
     # print(task_id, difficulty)
     session_id, obs = reset_episode(task_id, base_url)
     press_release = obs["press_release"]
-    fetched_sections = {}
+    fetched_sections = obs["fetched_sections"]
     available_tools = obs["available_tools"]
     final_reward = 0.0
     max_steps = MAX_STEPS[difficulty]
@@ -243,7 +277,7 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
                 action = "submit_verdict"
                 verdict = {"overall": FALLBACK_VERDICT[difficulty], "divergences": []}
             else:
-                action = "fetch_abstract"
+                action = "fetch_stats"
                 
         # 2.2 if submit, ask for verdict
         if action == "submit_verdict":
@@ -275,6 +309,9 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
     # 3. Get grader result
     grader = get_grader_result(session_id, base_url) if verdict_submitted else None
     score = grader["final_score"] if grader else 0.0
+    score = min(max(score, 0.0), 1.0)
+    # if grader:
+    #     print(f"[GRADER CHECKS] {json.dumps(grader.get('checks', []), indent=2)}", flush=True)
     # [END]
     log_end(success=(score > 0), steps=steps_taken, score=score, rewards=rewards_list)
 
@@ -332,37 +369,27 @@ def wait_for_server(base_url: str, timeout: int = 60, interval: float = 2.0) -> 
 # ------------------------------------
 
 RANDOM_SEED = 42
-EPISODES_PER_DIFFICULTY = 3
-
-PORT_REMAP = {8000: 7860}
+EPISODES_PER_DIFFICULTY = 5
  
 def main():
+    random.seed(RANDOM_SEED)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-url", default="http://localhost:8000")
+    parser.add_argument("--base-url", default="http://localhost:7860")
     args = parser.parse_args()
     base_url = args.base_url
- 
-    # --- Remap port if needed and auto-start the server ---
-    from urllib.parse import urlparse, urlunparse
-    parsed = urlparse(base_url)
-    server_port = PORT_REMAP.get(parsed.port, parsed.port)
-    if server_port != parsed.port:
-        # Rewrite base_url to the real port
-        base_url = urlunparse(parsed._replace(netloc=f"{parsed.hostname}:{server_port}"))
-        print(f"[SERVER] Remapped base-url to {base_url}", flush=True)
+    server_port = 7860
  
     # Check if the server is already up; if not, start it ourselves.
     server_proc = None
     try:
         requests.get(f"{base_url}/health", timeout=2)
-        print("[SERVER] Server already running, skipping auto-start.", flush=True)
+        print("[SERVER] Server responded, waiting until ready...", flush=True)
     except requests.exceptions.ConnectionError:
         server_proc = start_server(port=server_port)
- 
+    wait_for_server(base_url, timeout=120)
+    
     try:
-        wait_for_server(base_url, timeout=60)
- 
-        random.seed(RANDOM_SEED)
         all_tasks = get_tasks(base_url)
         results = []
  
