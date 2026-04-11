@@ -309,7 +309,6 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
     # 3. Get grader result
     grader = get_grader_result(session_id, base_url) if verdict_submitted else None
     score = grader["final_score"] if grader else 0.0
-    score = min(max(score, 0.0), 1.0)
     # if grader:
     #     print(f"[GRADER CHECKS] {json.dumps(grader.get('checks', []), indent=2)}", flush=True)
     # [END]
