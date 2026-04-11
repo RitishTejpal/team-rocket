@@ -1,14 +1,17 @@
-from core.config import get_settings
 from groq import Groq, RateLimitError
-import time
+import time, os
+from dotenv import load_dotenv
+load_dotenv()
 
-settings = get_settings()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_MODEL_NAME = os.getenv("GROQ_MODEL_NAME") or "meta-llama/llama-4-scout-17b-16e-instruct"
+
 _client = None
 
 def _get_client():
     global _client
     if _client is None:
-        _client = Groq(api_key=get_settings().groq_api_key)
+        _client = Groq(api_key=GROQ_API_KEY)
     return _client
 
 def build_press_release(sections: dict) -> str | None:
@@ -44,7 +47,7 @@ Write only the press release text. Nothing else.
         try:
             time.sleep(5.5)
             response = client.chat.completions.create(
-                    model=settings.groq_model_name,
+                    model=GROQ_MODEL_NAME,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,
                 )

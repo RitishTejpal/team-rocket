@@ -6,6 +6,7 @@ __pycache__/
 # C extensions
 *.so
 baseline_results_groq.json
+tests/
 
 # Distribution / packaging
 .Python
