@@ -65,6 +65,7 @@ def step_episode(session_id: str, action_type: str, base_url: str, verdict: dict
 def get_grader_result(session_id: str, base_url: str) -> dict:
     response = requests.get(f"{base_url}/grader", headers={"X-Session-ID": session_id})
     if response.status_code == 400:
+        print(f"[GRADER] 400 - grader not ready: {response.text}", flush=True)
         return None
     response.raise_for_status()
     return response.json()
@@ -309,6 +310,7 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
     # 3. Get grader result
     grader = get_grader_result(session_id, base_url) if verdict_submitted else None
     score = grader["final_score"] if grader else 0.0001
+    score = min(max(score, 0.0001), 0.9999)
     # assert 0.0 < score < 1.0, f"Score {score} out of range (0, 1) for task {task_id}"
     # [END]
     log_end(success=(score > 0), steps=steps_taken, score=score, rewards=rewards_list)

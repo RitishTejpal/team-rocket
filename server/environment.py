@@ -230,11 +230,8 @@ class SciCheckEnvironment:
         # Achieved raw score
         achieved_raw = (state.trajectory_score * 0.3) + (raw_verdict_score * 0.7)
 
-        MIN = 0.0001
-        MAX = 0.9999
-        # Normalize to 0 - 1
-        raw_ratio = achieved_raw / max_raw if max_raw > 0 else MIN
-        final_score = max(MIN, min(MAX, raw_ratio))
+        raw_ratio = achieved_raw / max_raw if max_raw > 0 else 0.0
+        final_score = max(0.0, min(1.0, raw_ratio))
 
         # Persist final numbers in grader result
         assert state.grader_result is not None
