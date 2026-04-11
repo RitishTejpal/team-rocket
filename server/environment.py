@@ -214,7 +214,7 @@ class SciCheckEnvironment:
         state = self._state
 
         # Trajectory penalty: submitted without ever fetching limitations
-        if "limitations" not in state.fetched_so_far:
+        if state.difficulty == TaskDifficulty.HARD and "limitations" not in state.fetched_so_far:
             state.trajectory_score -= 0.2
 
         raw_verdict_score, max_verdict_score = self._run_grader(verdict)
@@ -249,7 +249,13 @@ class SciCheckEnvironment:
         Deterministic verdict evaluation.
         Returns: (achieved_score, max_possible_score)
 
-        EASY / MEDIUM
+        EASY
+          +0.3  overall verdict matches ground truth
+          +0.3  per planted distortion whose type appears in agent.divergences
+          +0.2  per planted distortion whose found_in_section was fetched
+
+        MEDIUM
+          +0.3  baseline buffer
           +0.3  overall verdict matches ground truth
           +0.3  per planted distortion whose type appears in agent.divergences
           +0.2  per planted distortion whose found_in_section was fetched
@@ -290,7 +296,18 @@ class SciCheckEnvironment:
                 record(f"divergence_type:{p.type.value}", p.type in submitted_types, 0.3)
                 record(f"section_fetched:{p.found_in_section}", p.found_in_section in fetched, 0.2)
 
-        else:  # easy or medium
+        elif state.difficulty == TaskDifficulty.MEDIUM:
+            record("medium_baseline", True, 0.3)
+            record(
+                f"overall_verdict:{state.verdict_ground_truth}",
+                verdict.overall == state.verdict_ground_truth,
+                0.3,
+            )
+            for p in planted:
+                record(f"divergence_type:{p.type.value}", p.type in submitted_types, 0.3)
+                record(f"section_fetched:{p.found_in_section}", p.found_in_section in fetched, 0.2)
+
+        else:  # easy
             record(
                 f"overall_verdict:{state.verdict_ground_truth}",
                 verdict.overall == state.verdict_ground_truth,
