@@ -167,7 +167,7 @@ class SciCheckEnvironment:
             raise ValueError(f"Unrecognised action_type: {action.action_type}")
 
         if section in state.fetched_so_far:
-            # Already revealed — no reward, no penalty
+            # Already revealed - no reward, no penalty
             step_reward = 0.0
         else:
             state.fetched_so_far.append(section)

@@ -84,8 +84,8 @@ SECTION_LIMITS = {
 
 DIFFICULTY_GUIDANCE = """ 
     "easy": "The distortion is visible in the abstract. Compare carefully and submit directly.",
-    "medium": "The distortion is subtle and likely NOT visible in the abstract alone. Fetch methods or stats before submitting.", 
-    "hard": "The distortion involves omission or results manipulation. Fetch results AND limitations before submitting.", 
+    "medium": "DO NOT submit on step 1. The distortion is subtle and likely NOT visible in the abstract alone - it is hidden in some other sections. You MUST fetch at least one section first.", 
+    "hard": "DO NOT submit without fetching. The distortion involves omission or result manipulation. You MUST fetch results AND limitations before submitting.", 
 """
 
 def build_prompt(press_release: str, fetched_sections: dict, available_tools: list, steps_remaining: int) -> str:
@@ -308,9 +308,8 @@ def run_episode(task_id: str, difficulty: str, base_url: str) -> dict:
 
     # 3. Get grader result
     grader = get_grader_result(session_id, base_url) if verdict_submitted else None
-    score = grader["final_score"] if grader else 0.0
-    # if grader:
-    #     print(f"[GRADER CHECKS] {json.dumps(grader.get('checks', []), indent=2)}", flush=True)
+    score = grader["final_score"] if grader else 0.0001
+    # assert 0.0 < score < 1.0, f"Score {score} out of range (0, 1) for task {task_id}"
     # [END]
     log_end(success=(score > 0), steps=steps_taken, score=score, rewards=rewards_list)
 
