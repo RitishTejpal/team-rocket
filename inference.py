@@ -65,7 +65,7 @@ def step_episode(session_id: str, action_type: str, base_url: str, verdict: dict
 def get_grader_result(session_id: str, base_url: str) -> dict:
     response = requests.get(f"{base_url}/grader", headers={"X-Session-ID": session_id})
     if response.status_code == 400:
-        print(f"[GRADER] 400 - grader not ready: {response.text}", flush=True)
+        print(f"DEBUG: 400 - grader not ready: {response.text}", flush=True)
         return None
     response.raise_for_status()
     return response.json()

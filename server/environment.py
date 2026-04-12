@@ -149,7 +149,7 @@ class SciCheckEnvironment:
 
         # Episode already finished
         if state.done:
-            return self._make_observation(), 0.0, True
+            return self._make_observation(), 0.0001, True
 
         state.step_count += 1
 
@@ -168,7 +168,7 @@ class SciCheckEnvironment:
 
         if section in state.fetched_so_far:
             # Already revealed - no reward, no penalty
-            step_reward = 0.0
+            step_reward = 0.0001
         else:
             state.fetched_so_far.append(section)
             step_reward = 0.1 if self._is_relevant_section(section) else -0.1
@@ -230,8 +230,8 @@ class SciCheckEnvironment:
         # Achieved raw score
         achieved_raw = (state.trajectory_score * 0.3) + (raw_verdict_score * 0.7)
 
-        raw_ratio = achieved_raw / max_raw if max_raw > 0 else 0.0
-        final_score = max(0.0, min(1.0, raw_ratio))
+        raw_ratio = achieved_raw / max_raw if max_raw > 0 else 0.0001
+        final_score = max(0.0001, min(0.9999, raw_ratio))
 
         # Persist final numbers in grader result
         assert state.grader_result is not None
